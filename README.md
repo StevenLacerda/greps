@@ -19,7 +19,9 @@ egrep -iR "Compacting large row " ./ --include=debug.log
 
 #### gc
 egrep -ciR "gc.*\d\d\d\dms" ./ --include=debug.log | sort -k 1
+
 egrep -ciR "gc.*\d\d\dms" ./ --include=debug.log | sort -k 1
+
 egrep -iR "gc.*\d\d\dms" ./ --include=debug.log | cut -d " " -f 1,4,5,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
 
 #### network issues
