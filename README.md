@@ -1,19 +1,19 @@
 # greps
 
-flushing
+##flushing
 grep -ciR "commit-log-allocator" ./ --include=debug.log | sort -k 1
 grep -iR "commit-log-allocator" ./ --include=debug.log
 grep -iR "completed flushing" ./ --include=debug.log | cut -d'(' -f2 | cut -d')' -f1 | sort -h
 egrep -R "SlabPoolCleaner.*Enqueuing flush" ./ --include=debug.log | egrep -oh "\d[1-10](KiB|MiB|GiB)" | sort -h
 
-flushes per minute
+##flushes per minute
 grep -R 'Enqueuing flush' * --include=debug.log | egrep 'goid|metadata' | awk '{print $3, $4}' | cut -d: -f1,2 | uniq -c | awk '{print $2, $3 "\t" $1}'
 
-compaction
+##compaction
 grep -ciR "Compacted" ./ --include=debug.log | sort -k 1
 egrep -iR "Compacting large row " ./ --include=debug.log
 
-gc
+##gc
 egrep -ciR "gc.*\d\d\d\dms" ./ --include=debug.log | sort -k 1
 egrep -ciR "gc.*\d\d\dms" ./ --include=debug.log | sort -k 1
 egrep -iR "gc.*\d\d\dms" ./ --include=debug.log | cut -d " " -f 1,4,5,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
