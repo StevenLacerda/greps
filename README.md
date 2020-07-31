@@ -1,6 +1,6 @@
 # greps
 
-# flushing
+#flushing
 grep -ciR "commit-log-allocator" ./ --include=debug.log | sort -k 1
 grep -iR "commit-log-allocator" ./ --include=debug.log
 grep -iR "completed flushing" ./ --include=debug.log | cut -d'(' -f2 | cut -d')' -f1 | sort -h
