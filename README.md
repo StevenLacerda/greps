@@ -55,8 +55,6 @@ egrep -iR "commitScheduler.*DocumentsWriter" ./ --include=debug.log
 #### StatusLogger
 egrep -iR "StatusLogger.java:86" ./ --include=system.log | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t
 
-#### Keyspaces
-egrep -iR "create keyspace" ./ --include=schema | cut -d " " -f 3-13 | awk '{print $1,$8,$9,$10}' | sed -E 's/AND|{|}//g' | sort -k 8 | uniq | column -t
 
 
 # SPARK
@@ -66,5 +64,8 @@ egrep -R "sent to driver" ./100.99.209.224.workerlog/ | awk -F ')' '{print $2}' 
 
 
 # Generic
-#### Adding columns
+#### Adding columns using awk - example
 egrep java oom.rtf | grep -v Out | awk -F'kernel' '{print $2}' | awk '{print $7}' | awk '{for (i=1; i<=NF;i++) total = total+$i}; END {print total}'
+
+#### Keyspaces
+egrep -iR "create keyspace" ./ --include=schema | cut -d " " -f 3-13 | awk '{print $1,$8,$9,$10}' | sed -E 's/AND|{|}//g' | sort -k 8 | uniq | column -t
