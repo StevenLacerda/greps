@@ -17,6 +17,9 @@ grep -ciR "Compacted" ./ --include=debug.log | sort -k 1
 
 egrep -iR "Compacting large row " ./ --include=debug.log
 
+#### StatusLogger
+egrep -iR "StatusLogger.java:86" ./ --include=system.log | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t
+
 #### gc
 egrep -ciR "gc.*\d\d\d\dms" ./ --include=debug.log | sort -k 1
 
@@ -36,10 +39,6 @@ egrep -R "WARN|ERROR" --include=debug.log ./ | awk '{print $1,$5}' | sed 's/.*lo
 #### ntp
 egrep -iR "time.*`date +"%Y"`" ./ --include=ntptime | awk '{print $1,$4,$5,$6,$7,$8}' | sed 's/,//g' | sort -k 1 | column -t
 
-#### ttop
-grep -i "CoreThread-" ./ttop-10.12.156.221-Thu\ Jul\ 23\ 15%3A59%3A23\ EDT\ 2020.output | rev | awk '{print $1}' | rev | sort -h | uniq -c
-
-egrep "heap allocation rate" 172.22.7.81_ttop.log | grep -v "kb/s" | awk '{print $4}' | sort -h | tail -10
 
 
 # SOLR
@@ -51,9 +50,6 @@ egrep -iR "ttl.*scheduler.*expired" ./ --include=debug.log | grep 4096
 
 #### solr autocommit
 egrep -iR "commitScheduler.*DocumentsWriter" ./ --include=debug.log
-
-#### StatusLogger
-egrep -iR "StatusLogger.java:86" ./ --include=system.log | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t
 
 
 
@@ -68,4 +64,9 @@ egrep -R "sent to driver" ./100.99.209.224.workerlog/ | awk -F ')' '{print $2}' 
 egrep java oom.rtf | grep -v Out | awk -F'kernel' '{print $2}' | awk '{print $7}' | awk '{for (i=1; i<=NF;i++) total = total+$i}; END {print total}'
 
 #### Keyspaces
-egrep -iR "create keyspace" ./ --include=schema | cut -d " " -f 3-13 | awk '{print $1,$8,$9,$10}' | sed -E 's/AND|{|}//g' | sort -k 8 | uniq | column -t
+egrep -iR "create keyspace" ./ --include=schema | cut -d " " -f 3-21 | awk '{print $1,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21}' | sed -E 's/AND|{|}//g' | sort -k 8 | uniq | column -t
+
+#### ttop
+grep -i "CoreThread-" ./ttop-10.12.156.221-Thu\ Jul\ 23\ 15%3A59%3A23\ EDT\ 2020.output | rev | awk '{print $1}' | rev | sort -h | uniq -c
+
+egrep "heap allocation rate" 172.22.7.81_ttop.log | grep -v "kb/s" | awk '{print $4}' | sort -h | tail -10
