@@ -3,6 +3,8 @@
 #### flushing
 grep -ciR "commit-log-allocator" ./ --include=debug.log | sort -k 1
 
+grep -iR "commit-log-allocator.*[0-9][0-9]-[0-9][0-9]" ./ --include=debug.log | cut -d" " -f1,3 | sort -k1 | uniq -c
+
 grep -iR "commit-log-allocator" ./ --include=debug.log | sort -k 1,2 -k2,3
 
 grep -iR "completed flushing" ./ --include=debug.log | cut -d'(' -f2 | cut -d')' -f1 | sort -h
