@@ -1,7 +1,7 @@
 # greps
 
 #### flushing
-grep -ciR "commit-log-allocator" ./ --include=debug.log | sort -k 1
+grep -ciR "commit-log-allocator" ./ --include=debug.log | sort -k 1 | column -t
 
 grep -iR "commit-log-allocator.*[0-9][0-9]-[0-9][0-9]" ./ --include=debug.log | cut -d" " -f1,3 | sort -k1 | uniq -c
 
