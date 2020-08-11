@@ -29,6 +29,12 @@ egrep -ciR "gc.*\d\d\dms" ./ --include=debug.log | sort -k 1
 
 egrep -iR "gc.*\d\d\dms" ./ --include=debug.log | cut -d " " -f 1,4,5,6,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
 
+#### tombstones
+egrep -iR "maximum tombstones" ./ --include=cfstats | awk '$9>1 {print $2,$3,$4,$5,$6,$7,$8,$9}'
+
+#### sstable count
+egrep -iR "sstable count" ./ --include=cfstats | awk '$4>10 {print $2,$3,"\t",$4}'
+
 #### network issues
 grep -ciR "Unexpected exception during request" ./ --include=debug.log
 
