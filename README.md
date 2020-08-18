@@ -22,6 +22,8 @@ egrep -iR "Compacting large row " ./ --include=debug.log
 #### StatusLogger
 egrep -iR "StatusLogger.java:86" ./ --include=system.log | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t
 
+egrep -iR "StatusLogger.java:[86,56]" ./ --include=system.log | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t | sort
+
 #### gc
 egrep -ciR "gc.*\d\d\d\dms" ./ --include=debug.log | sort -k 1
 
