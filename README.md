@@ -47,6 +47,8 @@ grep -ciR "Maximum memory usage reached" ./ --include=debug.log | sort -k 1
 egrep -R "WARN|ERROR" --include=debug.log ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sort | uniq -c
 
 #### ntp
+egrep -iR "time correct|exit status" ./ --include=ntpstat
+
 egrep -iR "time.*`date +"%Y"`" ./ --include=ntptime | awk '{print $1,$4,$5,$6,$7,$8}' | sed 's/,//g' | sort -k 1 | column -t
 
 egrep -iR -A 1 "gettime" ./ --include=ntptime | grep -v "gettime" | column -t | awk '{print $1,$4,$5,$6,$7,$8,$9,$10,$11}'
