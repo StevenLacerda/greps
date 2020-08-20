@@ -51,7 +51,7 @@ egrep -iR "time correct|exit status" ./ --include=ntpstat
 
 #### repairs
 time to completion
-egrep -iR "Launching subrange" ./ --include=opscenterd.log | egrep -o "\d{1,3}%.*time to complete"
+egrep -iR "Launching" ./ --include=opscenterd.log | egrep -o "\d{1,5}.*time to complete" | awk -F'opscenterd.log:' '{print $2}' | cut -d' ' -f1,14-25
 
 
 # SOLR
