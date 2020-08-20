@@ -35,7 +35,7 @@ egrep -iR "gc.*\d\d\dms" ./ --include=debug.log | cut -d " " -f 1,4,5,6,10-15 | 
 egrep -iR "maximum tombstones" ./ --include=cfstats | awk '$9>1 {print $2,$3,$4,$5,$6,$7,$8,$9}'
 
 #### sstable count
-egrep -iR "sstable count" ./ --include=cfstats | awk '$4>10 {print $2,$3,"\t",$4}'
+egrep -iR "sstable count" ./ --include=cfstats | awk '$4>30 {print $1,$2,$3,"\t",$4}'
 
 #### network issues
 grep -ciR "Unexpected exception during request" ./ --include=debug.log
@@ -49,9 +49,9 @@ egrep -R "WARN|ERROR" --include=debug.log ./ | awk '{print $1,$5}' | sed 's/.*lo
 #### ntp
 egrep -iR "time correct|exit status" ./ --include=ntpstat
 
-egrep -iR "time.*`date +"%Y"`" ./ --include=ntptime | awk '{print $1,$4,$5,$6,$7,$8}' | sed 's/,//g' | sort -k 1 | column -t
-
-egrep -iR -A 1 "gettime" ./ --include=ntptime | grep -v "gettime" | column -t | awk '{print $1,$4,$5,$6,$7,$8,$9,$10,$11}'
+#### repairs
+time to completion
+egrep -iR "Launching subrange" ./ --include=opscenterd.log | egrep -o "\d{1,3}%.*time to complete"
 
 
 # SOLR
