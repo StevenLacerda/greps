@@ -50,7 +50,6 @@ egrep -R "WARN|ERROR" --include=debug.log ./ | awk '{print $1,$5}' | sed 's/.*lo
 egrep -iR "time correct|exit status" ./ --include=ntpstat
 
 #### repairs
-time to completion
 egrep -iR "Launching" ./ --include=opscenterd.log | egrep -o "\d{1,5}.*time to complete" | awk -F'opscenterd.log:' '{print $2}' | cut -d' ' -f1,14-25
 
 
