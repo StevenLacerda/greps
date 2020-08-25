@@ -67,7 +67,7 @@ egrep -iR "commitScheduler.*DocumentsWriter" ./ --include=debug.log
 
 # SPARK
 #### grab bytes sent to driver from executor
-egrep -R "sent to driver" ./100.99.209.224.workerlog/ | awk -F ')' '{print $2}' | awk '{print $2}' | awk '{for (i=1; i<=NF;i++) total = total+$i}; END {print total}'
+egrep -R "sent to driver" ./ --include=workerlog/ | awk -F ')' '{print $2}' | awk '{print $2}' | awk '{for (i=1; i<=NF;i++) total = total+$i}; END {print total}'
 
 
 
