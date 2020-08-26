@@ -43,8 +43,10 @@ grep -ciR "Unexpected exception during request" ./ --include=debug.log
 #### file cache exhausted
 grep -ciR "Maximum memory usage reached" ./ --include=debug.log | sort -k 1
 
-#### WARN/ERROR
+#### classes
 egrep -R "WARN|ERROR" --include=debug.log ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sort | uniq -c
+
+egrep -R "INFO|DEBUG|WARN|ERROR|CRITICAL" --include=debug.log ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sed 's/:.*//g' | sort | uniq -c
 
 #### ntp
 egrep -iR "time correct|exit status" ./ --include=ntpstat
