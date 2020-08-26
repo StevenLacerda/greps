@@ -20,9 +20,9 @@ grep -ciR "Compacted" ./ --include=debug* | sort -k 1
 egrep -iR "Compacting large row " ./ --include=debug*
 
 #### StatusLogger
-egrep -iR "StatusLogger.java:86" ./ --include=system.log | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t
+egrep -iR "StatusLogger.java:86" ./ --include=debug* | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t
 
-egrep -iR "StatusLogger.java:[86,56]" ./ --include=system.log | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t | sort
+egrep -iR "StatusLogger.java:[86,56]" ./ --include=debug* | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t | sort
 
 #### gc
 egrep -ciR "gc.*\d\d\d\dms" ./ --include=debug* | sort -k 1
