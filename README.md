@@ -25,11 +25,11 @@ egrep -iR "StatusLogger.java:86" ./ --include=debug* | awk -F'StatusLogger' '{pr
 egrep -iR "StatusLogger.java:[86,56]" ./ --include=debug* | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t | sort
 
 #### gc
-egrep -ciR "gc.*\d\d\d\dms" ./ --include=debug* | sort -k 1
+egrep -ciR "gc.*\d\d\d\dms" ./ --include=debug\* | sort -k 1
 
-egrep -ciR "gc.*\d\d\dms" ./ --include=debug* | sort -k 1
+egrep -ciR "gc.*\d\d\dms" ./ --include=debug\* | sort -k 1
 
-egrep -iR "gc.*\d\d\dms" ./ --include=debug* | cut -d " " -f 1,4,5,6,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
+egrep -iR "gc.*\d\d\dms" ./ --include=debug\* | cut -d " " -f 1,4,5,6,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
 
 #### tombstones
 egrep -iR "maximum tombstones" ./ --include=cfstats | awk '$9>1 {print $2,$3,$4,$5,$6,$7,$8,$9}' | sort | uniq
