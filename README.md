@@ -58,12 +58,12 @@ egrep -iR "Launching" ./ --include=opscenterd.log | egrep -o "\d{1,5}.*time to c
 # SOLR
 
 #### solr deletes
-egrep -iR "ttl.*scheduler.*expired" ./ --include=debug*
+egrep -iR "ttl.*scheduler.\*expired" ./ --include=debug\*
 
-egrep -iR "ttl.*scheduler.*expired" ./ --include=debug* | grep 4096
+egrep -iR "ttl.*scheduler.\*expired" ./ --include=debug\* | grep 4096
 
 #### solr autocommit
-egrep -iR "commitScheduler.*DocumentsWriter" ./ --include=debug*
+egrep -iR "commitScheduler.\*DocumentsWriter" ./ --include=debug\*
 
 
 
