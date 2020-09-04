@@ -20,19 +20,19 @@ grep -ciR "Compacted" ./ --include=debug* | sort -k 1
 egrep -iR "Compacting large row " ./ --include=debug*
 
 #### StatusLogger
-egrep -iR "StatusLogger.java:86" ./ --include=debug* | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t
+egrep -iR "StatusLogger.java:86" ./ --include=system* | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t
 
-egrep -iR "StatusLogger.java:[86,56]" ./ --include=debug* | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t | sort
+egrep -iR "StatusLogger.java:[86,56]" ./ --include=system* | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t | sort
 
 #### gc
-egrep -ciR "gc.*\d\d\d\dms" ./ --include=debug\* | sort -k 1
+egrep -ciR "gc.*\d\d\d\dms" ./ --include=system\* | sort -k 1
 
-egrep -ciR "gc.*\d\d\dms" ./ --include=debug\* | sort -k 1
+egrep -ciR "gc.*\d\d\dms" ./ --include=system\* | sort -k 1
 
-egrep -iR "gc.*\d\d\dms" ./ --include=debug\* | cut -d " " -f 1,4,5,6,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
+egrep -iR "gc.*\d\d\dms" ./ --include=system\* | cut -d " " -f 1,4,5,6,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
 
 #### tombstones
-egrep -iRh "readcommand" ./ --include=system* | cut -d" " -f3-50
+egrep -iRh "readcommand.\*tombstone" ./ --include=system* | cut -d" " -f3-50
 
 egrep -iR "maximum tombstones" ./ --include=cfstats | awk '$9>1 {print $2,$3,$4,$5,$6,$7,$8,$9}' | sort | uniq
 
@@ -40,15 +40,15 @@ egrep -iR "maximum tombstones" ./ --include=cfstats | awk '$9>1 {print $2,$3,$4,
 egrep -iR "sstable count" ./ --include=cfstats | awk '$4>30 {print $1,$2,$3,"\t",$4}'
 
 #### network issues
-grep -ciR "Unexpected exception during request" ./ --include=debug*
+grep -ciR "Unexpected exception during request" ./ --include=system*
 
 #### file cache exhausted
-grep -ciR "Maximum memory usage reached" ./ --include=debug* | sort -k 1
+grep -ciR "Maximum memory usage reached" ./ --include=system* | sort -k 1
 
 #### classes
-egrep -R "WARN|ERROR" --include=debug* ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sort | uniq -c
+egrep -R "WARN|ERROR" --include=system* ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sort | uniq -c
 
-egrep -R "INFO|DEBUG|WARN|ERROR|CRITICAL" --include=debug* ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sed 's/:.*//g' | sort | uniq -c
+egrep -R "INFO|DEBUG|WARN|ERROR|CRITICAL" --include=system* ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sed 's/:.*//g' | sort | uniq -c
 
 #### ntp
 egrep -iR "time correct|exit status" ./ --include=ntpstat
