@@ -32,6 +32,8 @@ egrep -ciR "gc.*\d\d\dms" ./ --include=debug\* | sort -k 1
 egrep -iR "gc.*\d\d\dms" ./ --include=debug\* | cut -d " " -f 1,4,5,6,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
 
 #### tombstones
+egrep -iRh "readcommand" ./ --include=system* | cut -d" " -f3-50
+
 egrep -iR "maximum tombstones" ./ --include=cfstats | awk '$9>1 {print $2,$3,$4,$5,$6,$7,$8,$9}' | sort | uniq
 
 #### sstable count
