@@ -3,7 +3,7 @@
 #### flushing
 grep -ciR "commit-log-allocator" ./ --include={system,debug}* | sort -k 1 | awk -F":" '{print $1,$2}' | column -t
 
-grep -iR "commit-log-allocator.*[0-9][0-9]-[0-9][0-9]" ./ --include={system,debug}* | cut -d" " -f1,3 | sort -k1 | uniq -c
+grep -iR "commit-log-allocator.*[0-9][0-9]-[0-9][0-9]" ./ --include={system,debug}\* | cut -d" " -f1,3 | sort -k1 | uniq -c
 
 grep -iR "commit-log-allocator" ./ --include={system,debug}* | sort -k 1,2 -k2,3
 
