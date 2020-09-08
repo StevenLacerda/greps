@@ -25,11 +25,11 @@ egrep -iR "StatusLogger.java:86" ./ --include=system* | awk -F'StatusLogger' '{p
 egrep -iR "StatusLogger.java:[86,56]" ./ --include=system* | awk -F'StatusLogger' '{print $2}' | awk '$4>0 {print $3,"\t",$4}' | column -t | sort
 
 #### gc
-egrep -ciR "gc.*\d\d\d\dms" ./ --include=system* | sort -k 1
+egrep -ciR "gc.*\d\d\d\dms" ./ --include=system\* | sort -k 1
 
-egrep -ciR "gc.*\d\d\dms" ./ --include=system* | sort -k 1
+egrep -ciR "gc.*\d\d\dms" ./ --include=system\* | sort -k 1
 
-egrep -iR "gc.*\d\d\dms" ./ --include=system* | cut -d " " -f 1,4,5,6,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
+egrep -iR "gc.*\d\d\dms" ./ --include=system\* | cut -d " " -f 1,4,5,6,10-15 | column -t | sort -t '\t' -k1,1 -k2,3
 
 #### tombstones
 egrep -iRh "readcommand.\*tombstone" ./ --include=system* | cut -d" " -f3-50
@@ -60,9 +60,9 @@ egrep -iR "Launching" ./ --include=opscenterd.log | egrep -o "\d{1,5}.*time to c
 # SOLR
 
 #### solr deletes
-egrep -iR "ttl.*scheduler.\*expired" ./ --include={system,debug}*
+egrep -iR "ttl.*scheduler.\*expired" ./ --include={system,debug}\*
 
-egrep -iR "ttl.*scheduler.\*expired" ./ --include={system,debug}* | grep 4096
+egrep -iR "ttl.*scheduler.\*expired" ./ --include={system,debug}\* | grep 4096
 
 #### solr autocommit
 egrep -iR "commitScheduler.\*DocumentsWriter" ./ --include={system,debug}*
