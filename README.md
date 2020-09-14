@@ -36,7 +36,7 @@ egrep -iRh "readcommand.\*tombstone" ./ --include=system* | cut -d" " -f3-50
 
 egrep -iR "maximum tombstones" ./ --include=cfstats | awk '$9>1 {print $2,$3,$4,$5,$6,$7,$8,$9}' | sort | uniq
 
-egrep -iRh "readcommand.*tombstone" ./ --include=system* | awk -F'FROM' '{print $2}' | awk -F'WHERE' '{print $1}' | sort | uniq
+egrep -iRh "readcommand.\*tombstone" ./ --include=system* | awk -F'FROM' '{print $2}' | awk -F'WHERE' '{print $1}' | sort | uniq
 
 #### sstable count
 egrep -iR "sstable count" ./ --include=cfstats | awk '$4>30 {print $1,$2,$3,"\t",$4}'
