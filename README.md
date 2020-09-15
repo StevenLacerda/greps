@@ -9,10 +9,17 @@ grep -iR "commit-log-allocator" ./ --include={system,debug}* | sort -k 1,2 -k2,3
 
 grep -iR "completed flushing" ./ --include={system,debug}* | cut -d'(' -f2 | cut -d')' -f1 | sort -h
 
-egrep -R "SlabPoolCleaner.*Enqueuing flush" ./ --include={system,debug}\* | egrep -oh "\d[1-10](KiB|MiB|GiB)" | sort -h
+###### largest 5 flushes
+grep -iR "enqueuing flush of" ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F' ' '{print $4}' | sort -h | tail -5
 
-#### flushes per minute
-grep -R 'Enqueuing flush' * --include={system,debug}* | egrep 'goid|metadata' | awk '{print $3, $4}' | cut -d: -f1,2 | uniq -c | awk '{print $2, $3 "\t" $1}'
+###### largest flush by table
+grep -iR "enqueuing flush of" ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F' ' '{print $3,$4}' | sort -r | sort -u -t: -k1,1
+
+###### flushes by table
+grep -iR "enqueuing flush of" ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F' ' '{print $3}' | sort | uniq -c
+
+###### flushes by thread
+grep -iRh "enqueuing flush of" ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/\:.*//g' | sort | uniq -c
 
 #### compaction
 grep -ciR "Compacted" ./ --include={system,debug}* | sort -k 1
