@@ -7,7 +7,7 @@ grep -iR "commit-log-allocator.*[0-9][0-9]-[0-9][0-9]" ./ --include={system,debu
 
 grep -iR "commit-log-allocator" ./ --include={system,debug}* | sort -k 1,2 -k2,3
 
-grep -iR "completed flushing" ./ --include={system,debug}* | cut -d'(' -f2 | cut -d')' -f1 | sort -h
+grep -iR "completed flushing" ./ --include={system,debug}* | cut -d'(' -f2 | cut -d')' -f1 | sort -h | tail -5
 
 ###### largest 5 flushes
 grep -iR "enqueuing flush of" ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F' ' '{print $4}' | sort -h | tail -5
