@@ -91,6 +91,11 @@ egrep java oom.rtf | grep -v Out | awk -F'kernel' '{print $2}' | awk '{print $7}
 #### Keyspaces
 egrep -iR "create keyspace" ./ --include=schema | cut -d " " -f 3-21 | awk '{print $1,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21}' | sed -E 's/AND|{|}//g' | sort -k 8 | uniq | column -t
 
+#### Tables with specific compaction strategies
+egrep -i "create\ table|compaction" ./nodes/"$(ls ./nodes | head -1)"/driver/schema | egrep -B 1 TimeWindow | egrep -i table | column -t | awk '{print $3}'
+
+egrep -i "create\ table|compaction" ./nodes/"$(ls ./nodes | head -1)"/driver/schema | egrep -B 1 LeveledCompaction | egrep -i table | column -t | awk '{print $3}'
+
 #### ttop
 grep -i "CoreThread-" ./ttop-10.12.156.221-Thu\ Jul\ 23\ 15%3A59%3A23\ EDT\ 2020.output | rev | awk '{print $1}' | rev | sort -h | uniq -c
 
