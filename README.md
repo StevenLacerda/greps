@@ -102,4 +102,4 @@ grep -i "CoreThread-" ./ttop-10.12.156.221-Thu\ Jul\ 23\ 15%3A59%3A23\ EDT\ 2020
 egrep "heap allocation rate" 172.22.7.81_ttop.log | grep -v "kb/s" | awk '{print $4}' | sort -h | tail -10
 
 ### recursively unzip
-find . -name "debug*.zip" | while read filename; do unzip $filename; done;
+find . -name "debug*.zip" | while read filename; do unzip -o -d $filename.out $filename; done;
