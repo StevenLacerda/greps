@@ -1,5 +1,8 @@
 # greps
 
+#### sperf
+sperf core statuslogger -st "2020-09-01 00:01" -et "2020-09-21 23:59"
+
 #### flushing
 grep -ciR "commit-log-allocator" ./ --include={system,debug}* | sort -k 1 | awk -F":" '{print $1,$2}' | column -t
 
