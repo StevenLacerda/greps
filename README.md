@@ -4,12 +4,10 @@
 sperf core statuslogger -st "2020-09-01 00:01" -et "2020-09-21 23:59"
 
 #### flushing
+###### commitlog flushes
 grep -ciR "commit-log-allocator" ./ --include={system,debug}* | sort -k 1 | awk -F":" '{print $1,$2}' | column -t
 
-grep -iR "commit-log-allocator.*[0-9][0-9]-[0-9][0-9]" ./ --include={system,debug}\* | cut -d" " -f1,3 | sort -k1 | uniq -c
-
-grep -iR "commit-log-allocator" ./ --include={system,debug}* | sort -k 1,2 -k2,3
-
+###### number of flushes
 grep -iR "completed flushing" ./ --include={system,debug}* | cut -d'(' -f2 | cut -d')' -f1 | sort -h | tail -5
 
 ###### largest 5 flushes
@@ -67,6 +65,9 @@ egrep -iR "time correct|exit status" ./ --include=ntpstat
 
 #### repairs
 egrep -iR "Launching" ./ --include=opscenterd.log | egrep -o "\d{1,5}.*time to complete" | cut -d" " -f5-25 | sort | uniq
+
+###### repaired Keyspaces
+grep -iRh "starting repair" ./ --include={system,debug}* | awk -F'keyspace' '{print $2}' | awk -F' ' '{print $1}' | sort | uniq -c
 
 
 # SOLR
