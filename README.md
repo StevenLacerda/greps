@@ -7,11 +7,13 @@ sperf core statuslogger -st "2020-09-01 00:01" -et "2020-09-21 23:59"
 ###### commitlog flushes
 grep -ciR "commit-log-allocator" ./ --include={system,debug}* | sort -k 1 | awk -F":" '{print $1,$2}' | column -t
 
-###### number of flushes
-grep -iR "completed flushing" ./ --include={system,debug}* | cut -d'(' -f2 | cut -d')' -f1 | sort -h | tail -5
+###### commitlog flushes today
+grep -ciR "$(date +%F).*commit-log-allocator" ./ --include={system,debug}* | sort -k 1 | awk -F":" '{print $1,$2}' | column -t
 
 ###### largest 5 flushes
 grep -iR "enqueuing flush of" ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F' ' '{print $4}' | sort -h | tail -5
+
+grep -iR "completed flushing" ./ --include={system,debug}* | cut -d'(' -f2 | cut -d')' -f1 | sort -h | tail -5
 
 ###### largest flush by table
 grep -iR "enqueuing flush of" ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F' ' '{print $3,$4}' | sort -r | sort -u -t: -k1,1
