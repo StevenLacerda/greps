@@ -92,6 +92,9 @@ egrep -iR "ttl.*scheduler.\*expired" ./ --include={system,debug}\* | grep 4096
 #### solr autocommit
 egrep -iR "commitScheduler.\*DocumentsWriter" ./ --include={system,debug}*
 
+#### flushes
+###### tables flushing
+egrep -iR "Index WorkPool.*Lucene flush" ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk '{print $1}' | sort | uniq -c
 
 
 # SPARK
