@@ -71,6 +71,16 @@ egrep -iR "Launching" ./ --include=opscenterd.log | egrep -o "\d{1,5}.*time to c
 ###### repaired Keyspaces
 grep -iRh "starting repair" ./ --include={system,debug}* | awk -F'keyspace' '{print $2}' | awk -F' ' '{print $1}' | sort | uniq -c
 
+#### proxyhistograms
+###### reads
+egrep -R "Max" ./ --include=proxyhistograms | awk 'BEGIN{print "Node","Read","Write","Range","CASRead","CASWrite","ViewWrite"};($2>500000) {print $1,$2,$3,$4,$5,$6,$7,$8}' | column -t
+
+nodetool proxyhistograms | grep --line-buffered "Max" | awk 'BEGIN{print "Node","Read","Write","Range","CASRead","CASWrite","ViewWrite"};($2>500000) {print $1,$2,$3,$4,$5,$6,$7,$8}' | column -t
+
+###### writes
+egrep -R "Max" ./ --include=proxyhistograms | awk 'BEGIN{print "Node","Read","Write","Range","CASRead","CASWrite","ViewWrite"};($3>500000) {print $1,$2,$3,$4,$5,$6,$7,$8}' | column -t
+
+nodetool proxyhistograms | grep --line-buffered "Max" | awk 'BEGIN{print "Node","Read","Write","Range","CASRead","CASWrite","ViewWrite"};(32>500000) {print $1,$2,$3,$4,$5,$6,$7,$8}' | column -t
 
 # SOLR
 
