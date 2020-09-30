@@ -117,6 +117,9 @@ egrep -i "create\ table|compaction" ./nodes/"$(ls ./nodes | head -1)"/driver/sch
 
 egrep -i "create\ table|compaction" ./nodes/"$(ls ./nodes | head -1)"/driver/schema | egrep -B 1 LeveledCompaction | egrep -i table | column -t | awk '{print $3}'
 
+##### tables with specific values condensed into one line
+ egrep -i "create\ table|gc_grace_seconds" ./nodes/"$(ls ./nodes | head -1)"/driver/schema | awk '{key=$0; getline; print key ", " $0;}' | sed 's/[\(,=]//g' | awk -F'gc_grace_seconds' '($2<864000){print $1,$2}'
+ 
 #### ttop
 grep -i "CoreThread-" ./ttop-10.12.156.221-Thu\ Jul\ 23\ 15%3A59%3A23\ EDT\ 2020.output | rev | awk '{print $1}' | rev | sort -h | uniq -c
 
