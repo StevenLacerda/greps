@@ -60,6 +60,8 @@ grep -ciR "Maximum memory usage reached" ./ --include=system* | sort -k 1
 #### classes
 egrep -R "WARN|ERROR" --include={system,debug}* ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sort | uniq -c
 
+find ./ -type f -name system.log -exec awk -F']' '{print $1}' {} \; | awk -F[ '{print $2}' | sed 's/[0-9:#]//g' | sort | uniq -c
+
 egrep -R "INFO|DEBUG|WARN|ERROR|CRITICAL" --include={system,debug}* ./ | awk '{print $1,$5}' | sed 's/.*log://g' | sed 's/:.*//g' | sort | uniq -c
 
 #### ntp
