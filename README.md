@@ -111,13 +111,16 @@ egrep -R "sent to driver" ./ --include=workerlog/ | awk -F ')' '{print $2}' | aw
 
 
 # Generic
-#### Adding columns using awk - example
+##### Adding columns using awk - example
 egrep java oom.rtf | grep -v Out | awk -F'kernel' '{print $2}' | awk '{print $7}' | awk '{for (i=1; i<=NF;i++) total = total+$i}; END {print total}'
 
-#### Keyspaces
+##### Parsing sstabledump for delete times
+grep -i "deletion_info" ./md-27020-big-Data.datadump | awk -F'local_delete_time' '{print $2}' | sed 's/\"\ :\ "//g' | awk -F'T' '{print $1}' | sort | uniq -c
+
+##### Keyspaces
 egrep -iR "create keyspace" ./ --include=schema | cut -d " " -f 3-21 | awk '{print $1,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21}' | sed -E 's/AND|{|}//g' | sort -k 8 | uniq | column -t
 
-#### Tables with specific compaction strategies
+##### Tables with specific compaction strategies
 egrep -i "create\ table|compaction" ./nodes/"$(ls ./nodes | head -1)"/driver/schema | egrep -B 1 TimeWindow | egrep -i table | column -t | awk '{print $3}'
 
 egrep -i "create\ table|compaction" ./nodes/"$(ls ./nodes | head -1)"/driver/schema | egrep -B 1 LeveledCompaction | egrep -i table | column -t | awk '{print $3}'
@@ -125,10 +128,10 @@ egrep -i "create\ table|compaction" ./nodes/"$(ls ./nodes | head -1)"/driver/sch
 ##### tables with specific values condensed into one line
  egrep -i "create\ table|gc_grace_seconds" ./nodes/"$(ls ./nodes | head -1)"/driver/schema | awk '{key=$0; getline; print key ", " $0;}' | sed 's/[\(,=]//g' | awk -F'gc_grace_seconds' '($2<864000){print $1,$2}'
  
-#### ttop
+##### ttop
 grep -i "CoreThread-" ./ttop-10.12.156.221-Thu\ Jul\ 23\ 15%3A59%3A23\ EDT\ 2020.output | rev | awk '{print $1}' | rev | sort -h | uniq -c
 
 egrep "heap allocation rate" 172.22.7.81_ttop.log | grep -v "kb/s" | awk '{print $4}' | sort -h | tail -10
 
-### recursively unzip
+##### recursively unzip
 find . -name "debug*.zip" | while read filename; do unzip -o -d $filename.out $filename; done;
