@@ -56,3 +56,7 @@ egrep -R "sent to driver" ./100.99.209.224.workerlog/ | awk -F ')' '{print $2}' 
 Generic
 Adding columns
 egrep java oom.rtf | grep -v Out | awk -F'kernel' '{print $2}' | awk '{print $7}' | awk '{for (i=1; i<=NF;i++) total = total+$i}; END {print total}'
+
+
+###### getting tombstone times in sstabledump
+grep -i "deletion_info" ./md-27020-big-Data.datadump | awk -F'local_delete_time' '{print $2}' | sed 's/\"\ :\ "//g' | awk -F'T' '{print $1}' | sort | uniq -c
