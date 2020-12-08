@@ -8,6 +8,7 @@
 mkdir Nibbler
 grep_file="Nibbler/1-greps.out"
 config_file="Nibbler/1-config.out"
+solr_file="Nibbler/1-solr.out"
 hash_line="=========================================================================================================="
 
 while getopts ":l" opt; do
@@ -40,7 +41,7 @@ else
 	today=$(find . -name "system.log" -o -name "debug.*"| head -1 $(head -1) | grep -oh "\d\d\d\d-\d\d-\d\d")
 	java -jar ~/Downloads/~nibbler/Nibbler.jar ./
 	cluster_config_summary="Cluster_Configuration_Summary.out"
-	egrep -i ".*" $(find . -name version | head -1) > $grep_file
+	egrep -i ".*" $(find . -name version | head -1) >> $grep_file
 
 	# echo "system.log start: " >> $grep_file
 	system_log=$(find . -name system.log | head -1)
@@ -191,7 +192,7 @@ driver_file=$(find . -name driver* | tail -1)
 if [ ! -z driver_file ]
 then
 	echo_request "KS REPLICATION I" 
-	echo "$driver_file" >> $ grep_file
+	echo "$driver_file" >> $grep_file
 	egrep -iR 'create keyspace' $driver_file --include=schema | cut -d ' ' -f 3-30 | awk -F'AND' '{print $1}' | column -t | sort -k8 >> $grep_file
 	echo_request "KS REPLICATION II" 
 	egrep -iR 'create keyspace' $driver_file --include=schema | cut -d ' ' -f 3-30 | awk -F'AND' '{print $1}' >> $grep_file
@@ -229,59 +230,74 @@ fi
 
 
 
-############## SOlR section
-
-echo >> $grep_file
-echo >> $grep_file
-echo >> $grep_file
-echo "************** SOLR SECTION **************" >> $grep_file
+############## SOlR section that goes to $solr_file
+echo "************** SOLR SECTION **************" >> $solr_file
 echo_request "SOLR DELETES" 
-egrep -iRc 'ttl.*scheduler.*expired' ./ --include={system,debug}* >> $grep_file
+egrep -iRc 'ttl.*scheduler.*expired' ./ --include={system,debug}* >> $solr_file
 
 echo_request "SOLR DELETES HITTING 4096 THRESHOLD" 
-egrep -icR 'ttl.*scheduler.*expired' ./ --include={system,debug}* >> $grep_file
+egrep -icR 'ttl.*scheduler.*expired' ./ --include={system,debug}* >> $solr_file
 
 echo_request "SOLR AUTOCOMMIT" 
-egrep -icR 'commitScheduler.*DocumentsWriter' ./ --include={system,debug}* >> $grep_file
+egrep -icR 'commitScheduler.*DocumentsWriter' ./ --include={system,debug}* >> $solr_file
 
 echo_request "SOLR COMMITS BY CORE" 
-egrep -iR 'AbstractSolrSecondaryIndex.*Executing soft commit' ./ --include={system,debug}* | awk '{print $1,$(NF)}' | sort | uniq -c >> $grep_file
+egrep -iR 'AbstractSolrSecondaryIndex.*Executing soft commit' ./ --include={system,debug}* | awk '{print $1,$(NF)}' | sort | uniq -c >> $solr_file
 
 echo_request "COMMITSCHEDULER"
-egrep -Ri "index workpool.*Solrmetricseventlistener" ./ --include=debug.log | awk -F']' '{print $1}' | awk -F'Index' '{print $1}' | sort | uniq -c >> $grep_file
+egrep -Ri "index workpool.*Solrmetricseventlistener" ./ --include=debug.log | awk -F']' '{print $1}' | awk -F'Index' '{print $1}' | sort | uniq -c >> $solr_file
 
 echo_request "SOLR FLUSHES" 
-egrep -iR 'Index WorkPool.Lucene flush' ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk '{print $1}' | sort | uniq -c >> $grep_file
+egrep -iR 'Index WorkPool.Lucene flush' ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk '{print $1}' | sort | uniq -c >> $solr_file
 
 echo_request "SOLR FLUSHES BY THREAD" 
-egrep -iR 'SolrMetricsEventListener.*Lucene flush' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sed 's/[0-9]*//g' | sed 's/\-/ /g'|  sort | uniq -c >> $grep_file
+egrep -iR 'SolrMetricsEventListener.*Lucene flush' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sed 's/[0-9]*//g' | sed 's/\-/ /g'|  sort | uniq -c >> $solr_file
 
 echo_request "QUERY RESPONSE TIMEOUT"
-grep -cR "Query response timeout of" ./ --include={system,debug}* >> $grep_file
+grep -cR "Query response timeout of" ./ --include={system,debug}* >> $solr_file
 
 echo_request "LUCENE MERGES"
 echo "total lucene merges" >> $grep_file
-grep -ciR "Lucene merge" ./ --include={system,debug}* >> $grep_file
+grep -ciR "Lucene merge" ./ --include={system,debug}* >> $solr_file
 
 echo
 echo "greater than 100ms" >> $grep_file
-grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.100){print $1}' | wc -l >> $grep_file
+grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.100){print $1}' | wc -l >> $solr_file
 
 echo
 echo "greater than 250ms" >> $grep_file
-grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.250){print $1}' | wc -l >> $grep_file
+grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.250){print $1}' | wc -l >> $solr_file
 
 echo
 echo "greater than 500ms" >> $grep_file
-grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.500){print $1}' | wc -l >> $grep_file
+grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.500){print $1}' | wc -l >> $solr_file
 
 echo
 echo "greater than 1000ms" >> $grep_file
-grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>1){print $1}' | wc -l >> $grep_file
+grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>1){print $1}' | wc -l >> $solr_file
+
+# filter cache loading issue
+# In case Johnny mentioned , we don’t see fq getting used but 
+# as token ranges use fq, that is still a fit.
+# high execute latency
+# Customer uses RF=N setup. In that setup there is a known problem in 5.1.12: DSP-19800
+# The scenario is as follows:
+# A node becomes unhealthy for some reason. May be even slightly unhealthy.
+# As a result it starts redirecting (coordinating) 
+# queries to another nodes. In due process it needlessly 
+# requests to use an internal token filter on remote nodes. 
+# This filter is not available, as it is normally not used in 
+# RF=N configurations and must be loaded. Loading may take many 
+# minutes on large indexes. As a result all these queries time out.
+echo
+echo "execute latency" >> $solr_file
+grep -R "minutes because higher than" ./ --include={system,debug}* >> $solr_file
+
+
 
 
 echo_request "SPERF QUERYSCORE" 
-sperf search queryscore >> $grep_file
+sperf search queryscore >> $solr_file
 
 
 # # ========================= cassandra.yaml differ =========================
@@ -310,9 +326,9 @@ sperf search queryscore >> $grep_file
 
 
 
-echo >> $grep_file
-echo >> $grep_file
-echo "************ ADDITIONAL ************" >> $grep_file
+# echo >> $grep_file
+# echo >> $grep_file
+# echo "************ ADDITIONAL ************" >> $grep_file
 
 
 # Get the first schema, and check partition keys
