@@ -11,6 +11,15 @@ config_file="Nibbler/1-config.out"
 solr_file="Nibbler/1-solr.out"
 hash_line="=========================================================================================================="
 
+touch $grep_file
+echo > $grep_file
+
+touch $config_file
+echo > $config_file
+
+touch $solr_file
+echo > $solr_file
+
 while getopts ":l" opt; do
   case ${opt} in
     l ) nibbler_off=1
@@ -21,10 +30,16 @@ done
 # $1 is heading line
 # $2 is bash command
 function echo_request(){
-	echo >> $grep_file
-	echo $hash_line >> $grep_file
-	echo $1 >> $grep_file
-	echo >> $grep_file
+	if [ -z $2 ]
+	then 
+		file=$grep_file
+	else
+		file=$2
+	fi
+	echo >> $file
+	echo $hash_line >> $file
+	echo $1 >> $file
+	echo >> $file
 }
 
 
@@ -32,7 +47,6 @@ function echo_request(){
 if [[ $nibbler_off == '1' ]]
 then 
 	echo "nibbler off"
-	touch $grep_file
 else 
 	# get version info
 	version=$(egrep -i ".*" $(find . -name version | head -1))
@@ -232,48 +246,45 @@ fi
 
 ############## SOlR section that goes to $solr_file
 echo "************** SOLR SECTION **************" >> $solr_file
-echo_request "SOLR DELETES" 
+echo_request "SOLR DELETES" $solr_file
 egrep -iRc 'ttl.*scheduler.*expired' ./ --include={system,debug}* >> $solr_file
 
-echo_request "SOLR DELETES HITTING 4096 THRESHOLD" 
-egrep -icR 'ttl.*scheduler.*expired' ./ --include={system,debug}* >> $solr_file
+h=`egrep -iRh 'max_docs_per_batch' ./ --include=dse.yaml | head -1 | awk '{print $2}'`
+echo_request "SOLR DELETES HITTING $h THRESHOLD" $solr_file
+egrep -icR "ttl.*scheduler.*expired.*$h" ./ --include={system,debug}* >> $solr_file
 
-echo_request "SOLR AUTOCOMMIT" 
+echo_request "SOLR AUTOCOMMIT" $solr_file
 egrep -icR 'commitScheduler.*DocumentsWriter' ./ --include={system,debug}* >> $solr_file
 
-echo_request "SOLR COMMITS BY CORE" 
+echo_request "SOLR COMMITS BY CORE" $solr_file
 egrep -iR 'AbstractSolrSecondaryIndex.*Executing soft commit' ./ --include={system,debug}* | awk '{print $1,$(NF)}' | sort | uniq -c >> $solr_file
 
-echo_request "COMMITSCHEDULER"
+echo_request "COMMITSCHEDULER" $solr_file
 egrep -Ri "index workpool.*Solrmetricseventlistener" ./ --include=debug.log | awk -F']' '{print $1}' | awk -F'Index' '{print $1}' | sort | uniq -c >> $solr_file
 
-echo_request "SOLR FLUSHES" 
+echo_request "SOLR FLUSHES" $solr_file
 egrep -iR 'Index WorkPool.Lucene flush' ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk '{print $1}' | sort | uniq -c >> $solr_file
 
-echo_request "SOLR FLUSHES BY THREAD" 
+echo_request "SOLR FLUSHES BY THREAD" $solr_file
 egrep -iR 'SolrMetricsEventListener.*Lucene flush' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sed 's/[0-9]*//g' | sed 's/\-/ /g'|  sort | uniq -c >> $solr_file
 
-echo_request "QUERY RESPONSE TIMEOUT"
+echo_request "QUERY RESPONSE TIMEOUT" $solr_file
 grep -cR "Query response timeout of" ./ --include={system,debug}* >> $solr_file
 
-echo_request "LUCENE MERGES"
-echo "total lucene merges" >> $grep_file
+echo_request "LUCENE MERGES" $solr_file
+echo "total lucene merges" >> $solr_file
 grep -ciR "Lucene merge" ./ --include={system,debug}* >> $solr_file
 
-echo
-echo "greater than 100ms" >> $grep_file
+echo "greater than 100ms" >> $solr_file
 grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.100){print $1}' | wc -l >> $solr_file
 
-echo
-echo "greater than 250ms" >> $grep_file
+echo "greater than 250ms" >> $solr_file
 grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.250){print $1}' | wc -l >> $solr_file
 
-echo
-echo "greater than 500ms" >> $grep_file
+echo "greater than 500ms" >> $solr_file
 grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>0.500){print $1}' | wc -l >> $solr_file
 
-echo
-echo "greater than 1000ms" >> $grep_file
+echo "greater than 1000ms" >> $solr_file
 grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>1){print $1}' | wc -l >> $solr_file
 
 # filter cache loading issue
@@ -289,14 +300,14 @@ grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' 
 # This filter is not available, as it is normally not used in 
 # RF=N configurations and must be loaded. Loading may take many 
 # minutes on large indexes. As a result all these queries time out.
-echo
+
 echo "execute latency" >> $solr_file
 grep -R "minutes because higher than" ./ --include={system,debug}* >> $solr_file
 
 
 
 
-echo_request "SPERF QUERYSCORE" 
+echo_request "SPERF QUERYSCORE" $solr_file
 sperf search queryscore >> $solr_file
 
 
