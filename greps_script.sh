@@ -394,16 +394,16 @@ echo_request "SPERF QUERYSCORE" $solr_file
 sperf search queryscore >> $solr_file
 
 echo_request "SPERF STATUS LOGGER" $sperf_file
-sperf core statuslogger >> $sperf_file &
+sperf core statuslogger >> $sperf_file
 
 echo_request "SPERF STATUS LOGGER - LATEST DAY ONLY" $sperf_file
-sperf core statuslogger -st $today' 00:01' -et $today' 23:59' >> $sperf_file &
+sperf core statuslogger -st $today' 00:01' -et $today' 23:59' >> $sperf_file
 
 echo_request "SPERF SLOW QUERY" $sperf_file
-sperf core slowquery >> $sperf_file &
+sperf core slowquery >> $sperf_file
 
 echo_request "SPERF SCHEMA" $sperf_file
-sperf core schema >> $sperf_file &
+sperf core schema >> $sperf_file
 # end sperf stuff
 
 
