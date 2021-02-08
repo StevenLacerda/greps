@@ -360,35 +360,22 @@ while true; do
 		solr
 		greps
 		sixO
-		exit 1
 		;;
  	-c) 
 		config
-		exit 1
 		;;
     -g)
     	greps
-    	exit 1
     	;; 
     -n) 
 		nibbler
-		exit 1
 		;;
 	-o) 
 		sixO
-		exit 1
 		;;
 	-s) 
 		solr
-		exit 1
 		;;
-	-*)
-		nibbler
-		config
-		solr
-		greps
-		sixo
-		exit 1
   esac
 done
 
