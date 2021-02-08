@@ -80,10 +80,8 @@ function nibbler() {
 
 function config() { 
 	touch $config_file
-	echo > $config_file
-
-	echo >> $config_file
-	echo "YAML VALUES" >> $config_file
+	echo_request "YAML VALUES" $config_file
+	
 	for f in `find . -type file -name cassandra.yaml`;
 	do
 		echo $f | grep -o '[0-9].*[0-9]' >> $config_file
