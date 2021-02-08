@@ -355,11 +355,10 @@ function greps() {
 while true; do
 	case $1 in 
 	-a) 
-		config
-		greps
 		nibbler
+		config
 		solr
-		diag
+		greps
 		sixO
 		exit 1
 		;;
@@ -384,11 +383,10 @@ while true; do
 		exit 1
 		;;
 	-*)
-		config
-		greps
 		nibbler
+		config
 		solr
-		diag
+		greps
 		sixo
 		exit 1
   esac
@@ -420,3 +418,11 @@ sperf core schema >> $sperf_file &
 # when done, ring the alert
 echo "DONE"
 tput bel
+
+
+
+
+
+### key words
+# JOINING: Finish joining ring
+# Bootstrap completed for tokens
