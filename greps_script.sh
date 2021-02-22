@@ -50,31 +50,24 @@ function nibbler() {
 	egrep -i ".*" $(find . -name version | head -1) >> $grep_file
 
 	# echo "system.log start: " >> $grep_file
-	system_log=$(find . -name system.log | head -1)
-	if [ -z $system_log ]
-	then
-		system_log="null"
-	fi
-	echo "system.log start: " $(head -1 $system_log | grep -oh "\d\d\d\d-\d\d-\d\d") >> $grep_file
-
-
-	debug_log=$(find . -name debug* | head -1)
-	if [ -z $debug_log ]
-	then
-		debug_log="null"
-	fi
-	echo "debug.log start: " $(head -1 $debug_log | grep -oh "\d\d\d\d-\d\d-\d\d") >> $grep_file
+	for f in `find ./ -type file -name system.log -o -name debug.log`; 
+		do 
+			echo $f >> $grep_file
+			grep -o "\d\d\d\d-\d\d-\d\d\ \d\d:\d\d" $f | head -1 >> $grep_file
+			grep -o "\d\d\d\d-\d\d-\d\d\ \d\d:\d\d" $f | tail -1 >> $grep_file
+			echo >> $grep_file
+		done
 
 	echo_request "NODE STATUS"
 	cat $node_status >> $grep_file
 
 	# config file section
-	echo "DISK CONFIGURATION" >> $config_file
-	egrep -Rh '======\ |^\s.*-' ./ --include=$cluster_config_summary | sed -e $'s/^====== /\\\n/g' >> $config_file
+	# echo "DISK CONFIGURATION" >> $config_file
+	# egrep -Rh '======\ |^\s.*-' ./ --include=$cluster_config_summary | sed -e $'s/^====== /\\\n/g' >> $config_file
 
-	echo >> $config_file
-	echo "CONFIGURATION" >> $config_file 
-	egrep -Rh '===== \d|Number|Machine' ./ --include=$cluster_config_summary | sed -e $'s/^====== /\\\n/g' >> $config_file
+	# echo >> $config_file
+	# echo "CONFIGURATION" >> $config_file 
+	# egrep -Rh '===== \d|Number|Machine' ./ --include=$cluster_config_summary | sed -e $'s/^====== /\\\n/g' >> $config_file
 }
 
 
@@ -236,8 +229,8 @@ function greps() {
 	echo_request "TOTAL COMPACTIONS" 
 	egrep -ciR 'Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
 
-	echo_request "TOTAL COMPACTIONS IN LAST DAY" 
-	egrep -ciR '$today.*Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
+	# echo_request "TOTAL COMPACTIONS IN LAST DAY" 
+	# egrep -ciR '$today.*Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
 
 	echo_request "PENDING TASKS" 
 	egrep -iR '^-\ ' ./ --include=compactionstats >> $grep_file
@@ -305,6 +298,9 @@ function greps() {
 		echo_request "KS REPLICATION II" 
 		egrep -iR 'create keyspace' $driver_file --include=schema | cut -d ' ' -f 3-40 | awk -F'AND' '{print $1}' >> $grep_file
 	fi
+
+	echo_request "PREPARED STATEMENTS DISCARDED"
+	egrep -Rc "prepared statements discarded" ./ --include=system* >> $grep_file
 }
 
 # # ========================= cassandra.yaml differ =========================
@@ -403,7 +399,7 @@ echo_request "SPERF STATUS LOGGER" $sperf_file
 sperf core statuslogger >> $sperf_file
 
 echo_request "SPERF STATUS LOGGER - LATEST DAY ONLY" $sperf_file
-sperf core statuslogger -st $today' 00:01' -et $today' 23:59' >> $sperf_file
+sperf core statuslogger -st $today' 00:01:00,000' -et $today' 23:59:00,000' >> $sperf_file
 
 echo_request "SPERF SLOW QUERY" $sperf_file
 sperf core slowquery >> $sperf_file
@@ -417,3 +413,11 @@ sperf core schema >> $sperf_file
 # when done, ring the alert
 echo "DONE"
 tput bel
+
+
+
+
+
+### key words
+# JOINING: Finish joining ring
+# Bootstrap completed for tokens
