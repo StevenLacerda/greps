@@ -19,6 +19,9 @@ solr_file="Nibbler/1-solr.out"
 sperf_file="Nibbler/1-sperf-statuslogger.out"
 diag_file="Nibbler/1-sperf-diag.out"
 sixo="Nibbler/1-sixo.out"
+warn="Nibbler/1-warnings.out"
+error="Nibbler/1-errors.out"
+threads="Nibbler/1-threads.out"
 hash_line="=========================================================================================================="
 
 
@@ -44,7 +47,7 @@ function nibbler() {
 	version=$(egrep -i ".*" $(find . -name version | head -1))
 	major_version=$(echo $version | awk -F'.' '{print $NF}' | cut -c1-1)
 	node_status="Nibbler/Node_Status.out"
-	today=$(find . -name "system.log" -o -name "debug.*"| head -1 $(head -1) | grep -oh "\d\d\d\d-\d\d-\d\d")
+	today=$(find . -name "system.log" -o -name "debug.*"| tail -1 $(head -1) | grep -oh "\d\d\d\d-\d\d-\d\d")
 	java -jar ~/Downloads/~nibbler/Nibbler.jar ./
 	cluster_config_summary="Cluster_Configuration_Summary.out"
 	egrep -i ".*" $(find . -name version | head -1) >> $grep_file
@@ -58,8 +61,8 @@ function nibbler() {
 			echo >> $grep_file
 		done
 
-	echo_request "NODE STATUS"
-	cat $node_status >> $grep_file
+	# echo_request "NODE STATUS"
+	# cat $node_status >> $grep_file
 
 	# config file section
 	# echo "DISK CONFIGURATION" >> $config_file
@@ -78,7 +81,7 @@ function config() {
 	for f in `find . -type file -name cassandra.yaml`;
 	do
 		echo $f | grep -o '[0-9].*[0-9]' >> $config_file
-		egrep -ih "^memtable_|^concurrent_compactors|^commitlog_total|^compaction_" $f >> $config_file
+		egrep -ih "^memtable_|^concurrent_compactors|^commitlog_total|^compaction_|^incremental_backups|^tpc_cores" $f >> $config_file
 		echo >> $config_file
 	done
 }
@@ -113,6 +116,12 @@ function sixO() {
 
 
 function solr() {
+	is_solr_enabled=`egrep "Search" ./Nibbler/Node_Status.out`
+	if [ -z "$is_solr_enabled" ]
+	then 
+		return 1
+	fi
+
 	touch $solr_file
 	echo "Solr greps" > $solr_file
 
@@ -155,8 +164,12 @@ function solr() {
 	echo_request "LARGEST 5 SOLR FLUSHES" $solr_file
 	egrep -iR 'SolrMetricsEventListener.*Lucene flush' ./ --include={system,debug}* | awk -F'flushed and' '{print $2}' | awk '{print $1,$2}' | sort -r | head -5 >> $solr_file
 
+	#flushing issues
+	echo_request "FLUSHING FAILURES" $solr_file
+	egrep -iR "Failure to flush may cause excessive growth of Cassandra commit log" ./ --include={system,debug}* >> $solr_file
+
 	echo_request "QUERY RESPONSE TIMEOUT" $solr_file
-	grep -cR "Query response timeout of" ./ --include={system,debug}* >> $solr_file
+	grep -R "Query response timeout of" ./ --include={system,debug}* >> $solr_file
 
 	echo_request "LUCENE MERGES" $solr_file
 	echo "total lucene merges" >> $solr_file
@@ -175,6 +188,14 @@ function solr() {
 	echo "1s plus" >> $solr_file
 	grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>=1){print $1}' | wc -l >> $solr_file
 
+	# you see above there that NTR is kicking in.. glorified backpressure but not yet hitting backpressure just slowing down commit rate
+	echo_request "INCREASING SOFT COMMIT RATE - Increasing commit rate before backpressure actually kicks in" >> $solr_file
+	egrep -iR "Increasing soft commit max time" ./ --include={system,debug}* >> $solr_file
+
+	# filter cache eviction
+	echo_request "FILTER CACHE EVICTION" $solr_file
+	egrep -iR "Evicting oldest entries" ./ --include={system,debug}* >> $solr_file
+
 	# filter cache loading issue
 	# In case Johnny mentioned , we don’t see fq getting used but 
 	# as token ranges use fq, that is still a fit.
@@ -191,17 +212,31 @@ function solr() {
 	echo >> $solr_file
 	echo "execute latency" >> $solr_file
 	grep -R "minutes because higher than" ./ --include={system,debug}* >> $solr_file
+
+	echo_request "SPERF QUERYSCORE" $solr_file
+	sperf search queryscore >> $solr_file
+
+	echo_request "SPERF FILTER CACHE" $solr_file
+	sperf search filtercache >> $solr_file
 }
 
 
 function greps() {
 	touch $grep_file
+	echo > $grep_file
+	touch $warn
+	echo > $warn
+	touch $error
+	echo > $error
+	touch $threads
+	echo > $threads
 
 	echo_request "DROPPED MESSAGES" 
 	egrep -icR 'DroppedMessages.java' ./ --include=debug.log >> $grep_file
 
 	echo_request "POSSIBLE NETWORK ISSUES" 
 	grep -ciR 'Unexpected exception during request' ./ --include=system* >> $grep_file
+	
 
 	echo_request "HINTED HANDOFFS TO ENDPOINTS" 
 	grep -R 'Finished hinted handoff' ./ --include={system,debug}* | awk -F'endpoint' '{print $2}' | awk '{print $1}' | sort | uniq -c  >> $grep_file
@@ -213,13 +248,12 @@ function greps() {
 	egrep -ciR 'commit-log-allocator.*$today' ./ --include={system,debug,output}* | sort -k 1 | awk -F':' '{print $1,$2}' | column -t >> $grep_file
 
 	echo_request "FLUSHES BY THREAD" 
-	egrep -iRh 'enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sort | uniq -c >> $grep_file
-
+	egrep -iRh 'enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | awk -F'(' '{print $1}' | awk -F'-' '{print $1}' | sort | uniq -c >> $grep_file
 	# echo_request "FLUSHES BY THREAD - TODAY" 
 	# egrep -iRh '$today.*enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sort | uniq -c >> $grep_file
 
 	echo_request "LARGEST 5 FLUSHES" 
-	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | tail -5 >> $grep_file
+	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | tail -r -5 >> $grep_file
 
 	echo_request "SMALLEST 5 FLUSHES" 
 	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | head -5 >> $grep_file
@@ -235,6 +269,8 @@ function greps() {
 	echo_request "PENDING TASKS" 
 	egrep -iR '^-\ ' ./ --include=compactionstats >> $grep_file
 
+	echo_request "RATE LIMITER APPLIED USUALLY MEANS TOO MANY OPERATIONS, CHECK CONCURRENT READS/WRITES IN CASSANDRA.YAML"
+	egrep -R "RateLimiter.*currently applied" ./ --include={system,debug}* >> $grep_file
 
 	echo_request "GC - OVER 100ms" 
 	egrep -ciR 'gc.*\d\d\dms' ./ --include=system* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
@@ -257,12 +293,15 @@ function greps() {
 	echo_request "TOMBSTONES BY NODE" 
 	egrep -ciR 'readcommand.*tombstone' ./ --include=system* >> $grep_file
 
+	echo_request "AGGREGATION QUERY USED WITHOUT PARTITION KEY"
+	egrep -ciR 'Aggregation query used without partition key' ./ --include={system,debug}* >> $grep_file
+
 	echo_request "SSTABLE COUNT" 
 	egrep -Rh -A 1 'Table:' ./ --include=cfstats | awk '{key=$0; getline; print key ", " $0;}' | sed 's/[(,=]//g' | awk '$5>30 {print $1,$2,$3,"\t",$4,$5}' | column -t >> $grep_file
 
 	echo_request "TABLE COMPACTION STRATEGY" 
 	schema_file=$(find . -name schema* | head -1)
-	if [ -z schema_file ]
+	if [ -z $schema_file ]
 	then
 		egrep -hi 'CREATE TABLE|compaction =' $schema_file | grep -v 'SizeTiered' >> $grep_file
 	fi
@@ -289,8 +328,8 @@ function greps() {
 	egrep -R 'Max' ./ --include=proxyhistograms | awk 'BEGIN{print "Node","Read","Write","Range","CASRead","CASWrite","ViewWrite"};{print $1,$2,$3,$4,$5,$6,$7,$8}' | column -t >> $grep_file
 
 
-	driver_file=$(find . -name driver* | tail -1)
-	if [ ! -z driver_file ]
+	driver_file=$(find . -name driver* | tail -1) 
+	if [ ! -z $driver_file ]
 	then
 		echo_request "KS REPLICATION I" 
 		echo "$driver_file" >> $grep_file
@@ -301,6 +340,23 @@ function greps() {
 
 	echo_request "PREPARED STATEMENTS DISCARDED"
 	egrep -Rc "prepared statements discarded" ./ --include=system* >> $grep_file
+
+
+	echo_request "ERRORS" $error
+	egrep -R "ERROR" ./ --include={system}* >> $error
+
+	echo_request "WARN" $warn
+	egrep -R "WARN" ./ --include={system}* >> warn
+
+	echo_request "TASKS"
+	egrep -R ".*" ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk -F']' '{print $1}' | sed 's|:.*||g' | sed 's|[(#].*||g' | sed 's/Repair-Task.*/Repair-Task/g' | sort | uniq -c >> $threads
+}
+
+
+function diag-import() {
+	filename=$1
+	dimp $filename
+	dimpv "$filename/diagnostics.db"
 }
 
 # # ========================= cassandra.yaml differ =========================
@@ -360,6 +416,10 @@ while true; do
 		config
 		break
 		;;
+	-d) 
+		diag-import $1
+		break
+		;;
     -g)
     	greps
     	break
@@ -376,14 +436,14 @@ while true; do
 		solr
 		break
 		;;
-	*) 
-		nibbler
-		config
-		solr
-		greps
-		sixO
-		break
-		;;
+	# *) 
+	# 	nibbler
+	# 	config
+	# 	solr
+	# 	greps
+	# 	sixO
+	# 	break
+	# 	;;
   esac
 done
 
@@ -391,9 +451,6 @@ done
 # run sperf on every diag
 echo_request "SPERF DIAG" $$diag_file
 sperf core diag >> $diag_file
-
-echo_request "SPERF QUERYSCORE" $solr_file
-sperf search queryscore >> $solr_file
 
 echo_request "SPERF STATUS LOGGER" $sperf_file
 sperf core statuslogger >> $sperf_file
@@ -416,6 +473,18 @@ tput bel
 
 
 
+
+
+# from cqlsh tracing session, gather shard info:
+# $grep "Processed response from shard" alln01-at-hcas18.txt |awk -F "," '{print $1}' |grep numFound | tr " " "*" | tr "\t" "&" |sed 's|*||g' |sed 's|Processedresponsefromshard||g'|sed 's|8609/solr/mfgsecurity.secure_events:||g' |sort -n |awk -F ":" '{print $1,$2,$3}'
+# 173.36.27.225 numFound 105882
+# 173.36.27.228 numFound 88308
+# 173.36.27.234 numFound 94308
+
+
+# traverse and unzip
+# find ./ -name \*.zip -exec unzip {} \;
+# for file in `find ./ -name *.zip`; do unzip $file; done
 
 
 ### key words
