@@ -259,8 +259,8 @@ function greps() {
 	# echo_request "SMALLEST 10 FLUSHES" 
 	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | head -10 >> $grep_file
 
-	echo_request "FLUSHING LARGEST" $grep_file
-	echo "Any flushes larger than .9x"
+	echo_request "FLUSHING LARGEST"
+	echo "Any flushes larger than .9x" >> $grep_file
 	egrep -R "Flushing largest.*\.9[0-9]" ./ --include=debug.log >> $grep_file
 
 	# echo_request "AVERAGE FLUSH SIZE" 
@@ -271,7 +271,8 @@ function greps() {
 	# echo_request "TOTAL COMPACTIONS IN LAST DAY" 
 	# egrep -ciR '$today.*Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
 
-	echo_request "RATE LIMITER APPLIED USUALLY MEANS TOO MANY OPERATIONS, CHECK CONCURRENT READS/WRITES IN CASSANDRA.YAML"
+	echo_request "RATE LIMITER APPLIED"
+	echo "Usually means too many operations, check concurrent reads/writes in c*.yaml" >> $grep_file
 	egrep -R "RateLimiter.*currently applied" ./ --include={system,debug}* >> $grep_file
 
 	echo_request "GC - OVER 100ms" 
@@ -310,7 +311,7 @@ function greps() {
 		echo_request "PENDING TASKS" 
 		egrep -iR '^-\ ' ./ --include=compactionstats >> $grep_file
 
-		cp $schema_file "Nibbler/1-schema"
+		cp $schema_file "Nibbler/1-schema.out"
 	fi
 
 	echo_request "MERGED COMPACTIONS COUNT"
