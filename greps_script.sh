@@ -123,7 +123,7 @@ function sixO() {
 
 function solr() {
 	is_solr_enabled=`egrep "Search" ./Nibbler/Node_Status.out`
-	if [ ! -z "$is_solr_enabled" ]
+	if [ -z "$is_solr_enabled" ]
 	then 
 		return 1
 	fi
@@ -262,7 +262,7 @@ function greps() {
 	echo_request "FLUSHING LARGEST" $grep_file
 	echo "Any flushes larger than .9x"
 	egrep -R "Flushing largest.*\.9[0-9]" ./ --include=debug.log >> $grep_file
-	
+
 	# echo_request "AVERAGE FLUSH SIZE" 
 	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | awk 'BEGIN {p=1}; {for (i=1; i<=NF;i++) total = total+$i; p=p+1}; END {print sprintf("%.0f", total/p)}' | awk '{ byte =$1 /1024/1024; print byte " MB" }' >> $grep_file
 	echo_request "TOTAL COMPACTIONS" 
@@ -309,6 +309,8 @@ function greps() {
 
 		echo_request "PENDING TASKS" 
 		egrep -iR '^-\ ' ./ --include=compactionstats >> $grep_file
+
+		cp $schema_file "Nibbler/1-schema"
 	fi
 
 	echo_request "MERGED COMPACTIONS COUNT"
