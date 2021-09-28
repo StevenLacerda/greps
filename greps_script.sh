@@ -83,7 +83,7 @@ function config() {
 	for f in `find . -type file -name cassandra.yaml`;
 	do
 		echo $f | grep -o '[0-9].*[0-9]' >> $config_file
-		egrep -ih "^memtable_|^#.*memtable_.*:|^concurrent_|^commitlog_total|^#.*commitlog_total.*:|^compaction_|^incremental_backups|^tpc_cores|^disk_access_mode" $f >> $config_file
+		egrep -ih "^memtable_|^#.*memtable_.*:|^concurrent_|^commitlog_segment|^commitlog_total|^#.*commitlog_total.*:|^compaction_|^incremental_backups|^tpc_cores|^disk_access_mode" $f >> $config_file
 		echo >> $config_file
 	done
 }
@@ -261,7 +261,7 @@ function greps() {
 
 	echo_request "FLUSHING LARGEST"
 	echo "Any flushes larger than .9x" >> $grep_file
-	egrep -R "Flushing largest.*\.9[0-9]" ./ --include=debug.log >> $grep_file
+	egrep -R "Flushing largest.*\.[8-9][0-9]" ./ --include=debug.log >> $grep_file
 
 	# echo_request "AVERAGE FLUSH SIZE" 
 	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | awk 'BEGIN {p=1}; {for (i=1; i<=NF;i++) total = total+$i; p=p+1}; END {print sprintf("%.0f", total/p)}' | awk '{ byte =$1 /1024/1024; print byte " MB" }' >> $grep_file
@@ -270,6 +270,21 @@ function greps() {
 
 	# echo_request "TOTAL COMPACTIONS IN LAST DAY" 
 	# egrep -ciR '$today.*Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
+
+	# shows the number of compactions by table
+	# 34113 [ disk3 c_data srm ts_sample-a35ac480045811ebab44a71fdbae4c86
+	echo_request "TABLES COMPACTED"
+	egrep -R "Compacted\ \(" ./ --include=debug.log | awk -F'sstables to ' '{print $2}' | awk -F',' '{print $1}' | sed 's/\// /g' | awk '{$NF=""; print $0}' | sort | uniq -c | sort -hr | head -10 >> $grep_file
+
+	# measures the longest compactions times, not by node, just overall
+	# [/disk3/c_data/srm/ts_sample-a35ac480045811ebab44a71fdbae4c86/nb-1882706-big,] 5,829,323ms
+	echo_request "LONGEST COMPACTION TIMES"
+	egrep -R "Compacted\ \(" ./ --include=debug.log | egrep -o "\[\/.*?\,.*\dms" | awk '{print $1,$(NF)}' | sort -h -k2 -r | head -20 >> $grep_file
+
+	# measures the longest compaction times with node info
+	# .//nodes/10.36.27.157/logs/cassandra/debug.log	5,829,323ms
+	echo_request "LONGEST COMPACTION TIMES WITH NODE INFO"
+	egrep -R "Compacted\ \(" ./ --include=debug.log | egrep -o ".*?\,.*\dms"  | awk '{print $1,$NF}' | sed 's/:.* /\t/g' | sort -h -r -k2 | head -20 >> $grep_file
 
 	echo_request "RATE LIMITER APPLIED"
 	echo "Usually means too many operations, check concurrent reads/writes in c*.yaml" >> $grep_file
