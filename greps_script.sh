@@ -388,6 +388,17 @@ function diag-import() {
 	python3 ~/Downloads/1-scripts/diag-viewer-main/app.py "$filename/diagnostics.db"
 }
 
+function use_options() {
+	echo "Please specify an option:"
+	echo "-a - nibbler, solr, config, greps"
+	echo "-c - config only"
+	echo "-d - diag-import"
+	echo "-g - greps only"
+	echo "-n - nibbler only"
+	echo "-o - six0"
+	echo "-s - solr only"
+}
+
 # # ========================= cassandra.yaml differ =========================
 # rm "${grep_file}/cassandra.yaml.diff"
 
@@ -465,14 +476,10 @@ while true; do
 		solr
 		break
 		;;
-	# *) 
-	# 	nibbler
-	# 	config
-	# 	solr
-	# 	greps
-	# 	sixO
-	# 	break
-	# 	;;
+	*) 
+		use_options
+		break
+		;;
   esac
 done
 
