@@ -478,7 +478,7 @@ while true; do
 		;;
 	*) 
 		use_options
-		break
+		exit 1
 		;;
   esac
 done
