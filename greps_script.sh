@@ -24,6 +24,7 @@ error="Nibbler/1-errors.out"
 threads="Nibbler/1-threads.out"
 slow_queries="Nibbler/1-slow-queries"
 gcs="Nibbler/1-gcs"
+tombstone_file="Nibbler/1-tombstones"
 hash_line="=========================================================================================================="
 
 
@@ -235,6 +236,7 @@ function greps() {
 	touch $threads
 	echo > $threads
 	touch $slow_queries
+	touch $tombstone_file
 
 	echo_request "DROPPED MESSAGES" 
 	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* >> $grep_file
@@ -308,11 +310,17 @@ function greps() {
 	echo_request "TOMBSTONE TABLES" 
 	egrep -iRh 'readcommand.*tombstone' ./ --include={system,debug}* | awk -F'FROM' '{print $2}' | awk -F'WHERE' '{print $1}' | sort | uniq -c | sort -nr >> $grep_file
 
-	echo_request "TOMBSTONES BY NODE" 
-	egrep -ciR 'readcommand.*tombstone' ./ --include={system,debug}* >> $grep_file
+	echo_request "TOMBSTONE MAX COUNT BY TABLE"
+	egrep -iRh 'tombstone' ./ --include={system,debug}*  | grep -o 'scanned over.*\|live rows and.*' | awk '{print $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $2, $(I+1)}' | sort -nrk1 | awk '!seen[$2]++' >> $grep_file
 
-	echo_request "AGGREGATION QUERY USED WITHOUT PARTITION KEY"
-	egrep -ciR 'Aggregation query used without partition key' ./ --include={system,debug}* >> $grep_file
+	echo_request "TOMBSTONE ALERTS BY NODE"
+	egrep -ciR 'tombstone' ./ --include={system,debug}* >> $grep_file
+
+	echo_request "TOMBSTONE QUERY ABORTS BY TABLE"
+	egrep -iRh 'tombstone' ./ --include={system,debug}* | grep "aborted" | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $(I+1)}' | sort | uniq -c >> $grep_file
+
+	echo_request "TOMBSTONE PARTITIONS" $tombstone_file
+	egrep -R "tombstone cells for" ./ --include={system.log,debug.log} | awk -F'FROM' '{print $2}' | awk -F'LIMIT' '{print $1}' | sort | uniq -c >> $tombstone_file
 
 	echo_request "SLOW QUERIES" $slow_queries
 	egrep -iR 'select.*slow' ./ --include={system,debug}* >> $slow_queries
@@ -369,6 +377,8 @@ function greps() {
 	echo_request "PREPARED STATEMENTS DISCARDED"
 	egrep -Rc "prepared statements discarded" ./ --include={system,debug}* >> $grep_file
 
+	echo_request "AGGREGATION QUERY USED WITHOUT PARTITION KEY"
+	egrep -ciR 'Aggregation query used without partition key' ./ --include={system,debug}* >> $grep_file
 
 	echo_request "ERRORS" $error
 	egrep -R "ERROR" ./ --include={system,debug}* >> $error
