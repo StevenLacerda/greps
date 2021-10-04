@@ -554,3 +554,8 @@ tput bel
 # egrep -iRh -B 2 -A 15 "level" ./10.36.81.120/ --include=cfstats | egrep "Table\:|level|read\ count|write\ count" | awk '{ printf("%-10s ",$0); if(NR%4==0) printf("\n");}' | column -t | awk '{print $NF,$0}' | sort -nr | cut -f2- -d' ' > LCS-tables.out
 
 # awk '{ printf("%-10s ",$0); if(NR%3==0) printf("\n");}'
+
+
+#replace in a file. Used for jpmc
+# for f in `find ./ -name java_version`; do sed -i'' -e '1d' $f; done
+
