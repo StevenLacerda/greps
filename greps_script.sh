@@ -355,7 +355,7 @@ function greps() {
 	if [ ! -z $driver_file ]
 	then
 		echo_request "REPAIRS" 
-		egrep -iR 'Launching' ./ --include=opscenterd.log | egrep -o '\d{1,5}.*time to complete' | cut -d' ' -f5-25 | sort | uniq >> $grep_file
+		egrep -iR 'Launching' ./ --include=opscenterd.log | egrep -o '\d{1,5}.*time to complete' | cut -d' ' -f5-60 | sort | uniq >> $grep_file
 
 		echo_request "PROXYHISTOGRAMS" 
 		egrep -R 'Max' ./ --include=proxyhistograms | awk 'BEGIN{print "Node","Read","Write","Range","CASRead","CASWrite","ViewWrite"};{print $1,$2,$3,$4,$5,$6,$7,$8}' | column -t >> $grep_file
