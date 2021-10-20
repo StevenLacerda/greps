@@ -22,9 +22,10 @@ sixo="Nibbler/1-sixo.out"
 warn="Nibbler/1-warnings.out"
 error="Nibbler/1-errors.out"
 threads="Nibbler/1-threads.out"
-slow_queries="Nibbler/1-slow-queries"
-gcs="Nibbler/1-gcs"
-tombstone_file="Nibbler/1-tombstones"
+slow_queries="Nibbler/1-slow-queries.out"
+gcs="Nibbler/1-gcs.out"
+tombstone_file="Nibbler/1-tombstones.out"
+histograms="Nibbler/1-histograms.out"
 hash_line="=========================================================================================================="
 
 
@@ -237,6 +238,7 @@ function greps() {
 	echo > $threads
 	touch $slow_queries
 	touch $tombstone_file
+	touch $histograms
 
 	echo_request "DROPPED MESSAGES" 
 	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* >> $grep_file
@@ -389,6 +391,12 @@ function greps() {
 	echo_request "THREADS" $threads
 	echo "All threads from system and debug logs" >> $threads
 	egrep -R ".*" ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk -F']' '{print $1}' | sed 's|:.*||g' | sed 's|[(#].*||g' | sed 's/Repair-Task.*/Repair-Task/g' | sort -k2 | uniq -c | sort -k1 -n >> $threads
+
+	echo_request "CFHistograms > 1s" $histograms
+	egrep -iR "histograms" -A 9 ./ --include=cfhistograms | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
+
+	echo_request "Proxyhistograms > 1s" $histograms
+	egrep -iR "histograms" -A 9 ./ --include=proxyhistograms | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
 }
 
 
