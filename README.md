@@ -8,11 +8,18 @@ greps [options]
 Possible options are:
 
 -a - nibbler, solr, config, greps
+
+
 -c - config only
+
 -d - diag-import
+
 -g - greps only
+
 -n - nibbler only
+
 -o - six0
+
 -s - solr only
 
 
