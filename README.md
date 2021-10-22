@@ -5,6 +5,17 @@ directory recursively:
 
 greps [options]
 
+Possible options are:
+
+-a - nibbler, solr, config, greps
+-c - config only
+-d - diag-import
+-g - greps only
+-n - nibbler only
+-o - six0
+-s - solr only
+
+
 There are some options which are located at the bottom of the file and constantly get changed and added to,
 so refer to the bottom of the greps.sh file to gather the options available.
 
