@@ -26,6 +26,8 @@ slow_queries="Nibbler/1-slow-queries.out"
 gcs="Nibbler/1-gcs.out"
 tombstone_file="Nibbler/1-tombstones.out"
 histograms="Nibbler/1-histograms.out"
+drops="Nibbler/1-drops.out"
+queues="Nibbler/1-queues.out"
 hash_line="=========================================================================================================="
 
 
@@ -134,14 +136,14 @@ function solr() {
 	echo "Solr greps" > $solr_file
 
 	echo_request "SOLR DELETES" $solr_file
-	egrep -iRc 'ttl.*scheduler.*expired' ./ --include={system,debug}* >> $solr_file
+	egrep -iRc 'ttl.*scheduler.*expired' ./ --include={system,debug}* | egrep "[1-9]" >> $solr_file
 
 	h=`egrep -iRh 'max_docs_per_batch' ./ --include=dse.yaml | head -1 | awk '{print $2}'`
 	echo_request "SOLR DELETES HITTING $h THRESHOLD" $solr_file
-	egrep -icR "ttl.*scheduler.*expired.*$h" ./ --include={system,debug}* >> $solr_file
+	egrep -icR "ttl.*scheduler.*expired.*$h" ./ --include={system,debug}* | egrep "[1-9]" >> $solr_file
 
 	echo_request "SOLR AUTOCOMMIT" $solr_file
-	egrep -icR 'commitScheduler.*DocumentsWriter' ./ --include={system,debug}* >> $solr_file
+	egrep -icR 'commitScheduler.*DocumentsWriter' ./ --include={system,debug}* | egrep "[1-9]" >> $solr_file
 
 	echo_request "SOLR COMMITS BY CORE" $solr_file
 	egrep -iR 'AbstractSolrSecondaryIndex.*Executing soft commit' ./ --include={system,debug}* | awk '{print $1,$(NF)}' | sort | uniq -c >> $solr_file
@@ -181,7 +183,7 @@ function solr() {
 
 	echo_request "LUCENE MERGES" $solr_file
 	echo "total lucene merges" >> $solr_file
-	grep -ciR "Lucene merge" ./ --include={system,debug}* >> $solr_file
+	grep -ciR "Lucene merge" ./ --include={system,debug}* | egrep "[1-9]" >> $solr_file
 
 	echo >> $solr_file
 	echo "100ms - 249ms" >> $solr_file
@@ -241,10 +243,10 @@ function greps() {
 	touch $histograms
 
 	echo_request "DROPPED MESSAGES" 
-	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* >> $grep_file
+	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* | egrep "[1-9]" >> $grep_file
 
 	echo_request "POSSIBLE NETWORK ISSUES" 
-	grep -ciR 'Unexpected exception during request' ./ --include={system,debug}* >> $grep_file
+	grep -ciR 'Unexpected exception during request' ./ --include={system,debug}* | egrep "[1-9]" >> $grep_file
 	
 	echo_request "HINTED HANDOFFS TO ENDPOINTS" 
 	grep -R 'Finished hinted handoff' ./ --include={system,debug}* | awk -F'endpoint' '{print $2}' | awk '{print $1}' | sort | uniq -c  >> $grep_file
@@ -270,7 +272,7 @@ function greps() {
 	# echo_request "AVERAGE FLUSH SIZE" 
 	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | awk 'BEGIN {p=1}; {for (i=1; i<=NF;i++) total = total+$i; p=p+1}; END {print sprintf("%.0f", total/p)}' | awk '{ byte =$1 /1024/1024; print byte " MB" }' >> $grep_file
 	echo_request "TOTAL COMPACTIONS" 
-	egrep -ciR 'Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
+	egrep -ciR 'Compacted' ./ --include={system,debug}* | sort -k 1 | egrep "[1-9]" >> $grep_file
 
 	# echo_request "TOTAL COMPACTIONS IN LAST DAY" 
 	# egrep -ciR '$today.*Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
@@ -316,7 +318,7 @@ function greps() {
 	egrep -iRh 'tombstone' ./ --include={system,debug}*  | grep -o 'scanned over.*\|live rows and.*' | awk '{print $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $2, $(I+1)}' | sort -nrk1 | awk '!seen[$2]++' >> $grep_file
 
 	echo_request "TOMBSTONE ALERTS BY NODE"
-	egrep -ciR 'tombstone' ./ --include={system,debug}* >> $grep_file
+	egrep -ciR 'tombstone' ./ --include={system,debug}* | egrep "[1-9]" >> $grep_file
 
 	echo_request "TOMBSTONE QUERY ABORTS BY TABLE"
 	egrep -iRh 'tombstone' ./ --include={system,debug}* | grep "aborted" | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $(I+1)}' | sort | uniq -c >> $grep_file
@@ -340,7 +342,7 @@ function greps() {
 	fi
 
 	echo_request "MERGED COMPACTIONS COUNT"
-	egrep -Ric 'Compacted (.*).*]' ./ --include={debug,system}* >> $grep_file
+	egrep -Ric 'Compacted (.*).*]' ./ --include={debug,system}* | egrep "[1-9]" >> $grep_file
 
 	echo_request "MERGED COMPACTIONS" 
 	egrep -R 'Compacted (.*).*]' ./ --include={debug,system}* | awk '$0 ~ /[1-9][0-9]\ sstables/{print $0}' >> $grep_file
@@ -359,9 +361,6 @@ function greps() {
 		echo_request "REPAIRS" 
 		egrep -iR 'Launching' ./ --include=opscenterd.log | egrep -o '\d{1,5}.*time to complete' | cut -d' ' -f5-60 | sort | uniq >> $grep_file
 
-		echo_request "PROXYHISTOGRAMS" 
-		egrep -R 'Max' ./ --include=proxyhistograms | awk 'BEGIN{print "Node","Read","Write","Range","CASRead","CASWrite","ViewWrite"};{print $1,$2,$3,$4,$5,$6,$7,$8}' | column -t >> $grep_file
-
 		echo_request "NTP" 
 		egrep -iR 'time correct|exit status' ./ --include=ntpstat >> $grep_file
 
@@ -377,10 +376,13 @@ function greps() {
 	fi
 
 	echo_request "PREPARED STATEMENTS DISCARDED"
-	egrep -Rc "prepared statements discarded" ./ --include={system,debug}* >> $grep_file
+	egrep -Rc "prepared statements discarded" ./ --include={system,debug}* | egrep "[1-9]" >> $grep_file
 
 	echo_request "AGGREGATION QUERY USED WITHOUT PARTITION KEY"
-	egrep -ciR 'Aggregation query used without partition key' ./ --include={system,debug}* >> $grep_file
+	egrep -ciR 'Aggregation query used without partition key' ./ --include={system,debug}* | egrep "[1-9]" >> $grep_file
+
+	echo_request "CHUNK CACHE ALLOCATION"
+	egrep -ciR "Maximum memory usage reached.*cannot allocate chunk of" ./ --include={system,debug}* | egrep "[1-9]"  >> $grep_file
 
 	echo_request "ERRORS" $error
 	egrep -R "ERROR" ./ --include={system,debug}* >> $error
@@ -392,11 +394,19 @@ function greps() {
 	echo "All threads from system and debug logs" >> $threads
 	egrep -R ".*" ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk -F']' '{print $1}' | sed 's|:.*||g' | sed 's|[(#].*||g' | sed 's/Repair-Task.*/Repair-Task/g' | sort -k2 | uniq -c | sort -k1 -n >> $threads
 
+	echo_request "DROPPED" $drops
+	echo "All dropped messages (mutation, read, hint)" >> $drops
+	egrep -R "messages were dropped in last" ./ --include={system,debug}* >> $drops
+
 	echo_request "CFHistograms > 1s" $histograms
-	egrep -iR "histograms" -A 9 ./ --include=cfhistograms | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
+	egrep -iR "histograms" -A 9 ./ --include={cfhistograms,commands.txt} | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
 
 	echo_request "Proxyhistograms > 1s" $histograms
-	egrep -iR "histograms" -A 9 ./ --include=proxyhistograms | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
+	egrep -iR "histograms" -A 9 ./ --include={proxyhistograms,commands.txt} | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
+
+	echo_request "Latency waiting in Queue" $queues
+	echo "Track if a queue is high from tpstats. We're looking for anything over 300ms" >> $queues
+	egrep -R "Latency waiting in queue" -A 20 ./ --include=tpstats | egrep ".*[3-9]\d\d\d\d\d\." >> $queues
 }
 
 
