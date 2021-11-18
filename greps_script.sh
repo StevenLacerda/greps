@@ -406,6 +406,8 @@ function greps() {
 
 	echo_request "Latency waiting in Queue" $queues
 	echo "Track if a queue is high from tpstats. We're looking for anything over 300ms" >> $queues
+	echo "Message type           Dropped                  Latency waiting in queue (micros)                                    
+                                             50%               95%               99%               Max" >> $queues
 	egrep -R "Latency waiting in queue" -A 20 ./ --include=tpstats | egrep ".*[3-9]\d\d\d\d\d\." >> $queues
 }
 
