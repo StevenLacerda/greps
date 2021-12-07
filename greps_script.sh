@@ -398,7 +398,9 @@ function greps() {
 	echo_request "DROPPED" $drops
 	echo "All dropped messages (mutation, read, hint)" >> $drops
 	egrep -R "messages were dropped in last" ./ --include={system,debug}* >> $drops
+}
 
+function histograms_and_queues() {
 	echo_request "CFHistograms > 1s" $histograms
 	egrep -iR "histograms" -A 9 ./ --include={cfhistograms,commands.txt} | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
 
@@ -497,6 +499,7 @@ while true; do
 		solr
 		greps
 		iostat
+		histograms_and_queues
 		# sixO
 		break
 		;;
