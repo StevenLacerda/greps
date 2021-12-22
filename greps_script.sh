@@ -312,21 +312,6 @@ function greps() {
 	echo_request "GC GREATER THAN 1s AND BEFORE" 
 	egrep -iR -B 5 'gc.*\d\d\d\dms' ./ --include={system,debug}* >> $grep_file
 
-	echo_request "TOMBSTONE TABLES" 
-	egrep -iRh 'readcommand.*tombstone' ./ --include={system,debug}* | awk -F'FROM' '{print $2}' | awk -F'WHERE' '{print $1}' | sort | uniq -c | sort -nr >> $grep_file
-
-	echo_request "TOMBSTONE MAX COUNT BY TABLE"
-	egrep -iRh 'tombstone' ./ --include={system,debug}*  | grep -o 'scanned over.*\|live rows and.*' | awk '{print $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $2, $(I+1)}' | sort -nrk1 | awk '!seen[$2]++' >> $grep_file
-
-	echo_request "TOMBSTONE ALERTS BY NODE"
-	egrep -ciR 'tombstone' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
-
-	echo_request "TOMBSTONE QUERY ABORTS BY TABLE"
-	egrep -iRh 'tombstone' ./ --include={system,debug}* | grep "aborted" | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $(I+1)}' | sort | uniq -c >> $grep_file
-
-	echo_request "TOMBSTONE PARTITIONS" $tombstone_file
-	egrep -R "tombstone cells for" ./ --include={system.log,debug.log} | awk -F'FROM' '{print $2}' | awk -F'LIMIT' '{print $1}' | sort | uniq -c >> $tombstone_file
-
 	echo_request "SLOW QUERIES" $slow_queries
 	egrep -iR 'select.*slow' ./ --include={system,debug}* >> $slow_queries
 
@@ -398,6 +383,23 @@ function greps() {
 	echo_request "DROPPED" $drops
 	echo "All dropped messages (mutation, read, hint)" >> $drops
 	egrep -R "messages were dropped in last" ./ --include={system,debug}* >> $drops
+}
+
+function tombstones() {
+	echo_request "TOMBSTONE TABLES" $tombstone_file
+	egrep -iRh 'readcommand.*tombstone' ./ --include={system,debug}* | awk -F'FROM' '{print $2}' | awk -F'WHERE' '{print $1}' | sort | uniq -c | sort -nr >> $tombstone_file
+
+	echo_request "TOMBSTONE MAX COUNT BY TABLE" $tombstone_file
+	egrep -iRh 'tombstone' ./ --include={system,debug}*  | grep -o 'scanned over.*\|live rows and.*' | awk '{print $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $2, $(I+1)}' | sort -nrk1 | awk '!seen[$2]++' >> $tombstone_file
+
+	echo_request "TOMBSTONE ALERTS BY NODE" $tombstone_file
+	egrep -ciR 'tombstone' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $tombstone_file
+
+	echo_request "TOMBSTONE QUERY ABORTS BY TABLE" $tombstone_file
+	egrep -iRh 'tombstone' ./ --include={system,debug}* | grep "aborted" | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $(I+1)}' | sort | uniq -c >> $tombstone_file
+
+	echo_request "TOMBSTONE PARTITIONS - number of times partition hit" $tombstone_file
+	egrep -R "tombstone cells for" ./ --include={system.log,debug.log} | awk -F'FROM' '{print $2}' | awk -F'LIMIT' '{print $1}' | sort | uniq -c >> $tombstone_file
 }
 
 function histograms_and_queues() {
@@ -500,6 +502,7 @@ while true; do
 		greps
 		iostat
 		histograms_and_queues
+		tombstones
 		# sixO
 		break
 		;;
@@ -513,6 +516,7 @@ while true; do
 		;;
     -g)
     	greps
+    	tombstones
     	break
     	;; 
     -n) 
@@ -600,3 +604,5 @@ tput bel
 #replace in a file. Used for jpmc
 # for f in `find ./ -name java_version`; do sed -i'' -e '1d' $f; done
 
+# turning all files from cassandra.log to system-cassandra.log.0, etc...
+# for f in `find ./ -name cassandra*`; do mv $f "`dirname $f`/debug-`basename $f`"; done
