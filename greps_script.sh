@@ -389,10 +389,10 @@ function tombstones() {
 	echo_request "TOMBSTONE TABLES" $tombstone_file
 	egrep -iRh 'readcommand.*tombstone' ./ --include={system,debug}* | awk -F'FROM' '{print $2}' | awk -F'WHERE' '{print $1}' | sort | uniq -c | sort -nr >> $tombstone_file
 
-	echo_request "TOMBSTONE MAX COUNT BY TABLE" $tombstone_file
+	echo_request "TOMBSTONE MAX COUNT BY TABLE - max number of tombstones hit" $tombstone_file
 	egrep -iRh 'tombstone' ./ --include={system,debug}*  | grep -o 'scanned over.*\|live rows and.*' | awk '{print $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13}' | awk '{for (I=1;I<NF;I++) if ($I == "FROM") print $2, $(I+1)}' | sort -nrk1 | awk '!seen[$2]++' >> $tombstone_file
 
-	echo_request "TOMBSTONE ALERTS BY NODE" $tombstone_file
+	echo_request "TOMBSTONE ALERTS BY NODE - number of tombstone alerts" $tombstone_file
 	egrep -ciR 'tombstone' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $tombstone_file
 
 	echo_request "TOMBSTONE QUERY ABORTS BY TABLE" $tombstone_file
