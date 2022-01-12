@@ -88,7 +88,7 @@ function config() {
 	for f in `find . -type file -name cassandra.yaml`;
 	do
 		echo $f | grep -o '[0-9].*[0-9]' >> $config_file
-		egrep -ih "^memtable_|^#.*memtable_.*:|^concurrent_|^commitlog_segment|^commitlog_total|^#.*commitlog_total.*:|^compaction_|^incremental_backups|^tpc_cores|^disk_access_mode" $f >> $config_file
+		egrep -ih "^memtable_|^#.*memtable_.*:|^concurrent_|^commitlog_segment|^commitlog_total|^#.*commitlog_total.*:|^compaction_|^incremental_backups|^tpc_cores|^disk_access_mode|^file_cache_size_in_mb|^#.*file_cache_size_in_mb.*:" $f >> $config_file
 		echo >> $config_file
 	done
 }
@@ -150,7 +150,7 @@ function solr() {
 	egrep -iR 'AbstractSolrSecondaryIndex.*Executing soft commit' ./ --include={system,debug}* | awk '{print $1,$(NF)}' | sort | uniq -c >> $solr_file
 
 	echo_request "COMMITSCHEDULER" $solr_file
-	egrep -Ri "index workpool.*Solrmetricseventlistener" ./ --include=debug.log | awk -F']' '{print $1}' | awk -F'Index' '{print $1}' | sort | uniq -c >> $solr_file
+	egrep -Ri "index workpool.*Solrmetricseventlistener" ./ --include=debug.log | awk -F']' '{print $1}' | awk -F'Index' '{print $1}' | sort -h | uniq -c | sort -rh >> $solr_file
 
 	echo_request "SOLR FLUSHES" $solr_file
 	egrep -iR 'Index WorkPool.Lucene flush' ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk '{print $1}' | sort | uniq -c >> $solr_file
@@ -237,8 +237,8 @@ function greps() {
 	echo > $warn
 	touch $error
 	echo > $error
-	touch $threads
-	echo > $threads
+	# touch $threads
+	# echo > $threads
 	touch $slow_queries
 	touch $tombstone_file
 	touch $histograms
@@ -246,7 +246,7 @@ function greps() {
 	echo_request "DROPPED MESSAGES" 
 	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
-	echo_request "POSSIBLE NETWORK ISSUES" 
+	echo_request "POSSIBLE NETWORK ISSUES - unexpected exception during request" 
 	grep -ciR 'Unexpected exception during request' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 	
 	echo_request "HINTED HANDOFFS TO ENDPOINTS" 
@@ -298,19 +298,19 @@ function greps() {
 	egrep -R "RateLimiter.*currently applied" ./ --include={system,debug}* >> $grep_file
 
 	echo_request "GC - OVER 100ms" 
-	egrep -ciR 'gc.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	egrep -ciR 'gcinspector.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
 	echo_request "GC - OVER 100ms TODAY" 
-	egrep -ciR '$(date +%Y-%m-%d).*gc.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
 	echo_request "GC - GREATER THAN 1s" 
-	egrep -ciR 'gc.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
+	egrep -ciR 'gcinspector.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
 
 	echo_request "GC - GREATER THAN 1s TODAY" 
-	egrep -ciR '$(date +%Y-%m-%d).*gc.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
+	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
 
 	echo_request "GC GREATER THAN 1s AND BEFORE" 
-	egrep -iR -B 5 'gc.*\d\d\d\dms' ./ --include={system,debug}* >> $grep_file
+	egrep -iR -B 5 'gcinspector.*\d\d\d\dms' ./ --include={system,debug}* >> $grep_file
 
 	echo_request "SLOW QUERIES" $slow_queries
 	egrep -iR 'select.*slow' ./ --include={system,debug}* >> $slow_queries
@@ -351,7 +351,7 @@ function greps() {
 		egrep -iR 'time correct|exit status' ./ --include=ntpstat | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
 		echo_request "LCS TABLES"
-		egrep -iR "create table|and compaction" $driver_file --include=schema| grep -B1 "LeveledCompactionStrategy" >> $grep_file
+		egrep -iRh "create table|and compaction" $driver_file --include=schema| grep -B1 "LeveledCompactionStrategy" >> $grep_file
 
 		echo_request "KS REPLICATION I" 
 		echo "$driver_file" >> $grep_file
@@ -606,3 +606,9 @@ tput bel
 
 # turning all files from cassandra.log to system-cassandra.log.0, etc...
 # for f in `find ./ -name cassandra*`; do mv $f "`dirname $f`/debug-`basename $f`"; done
+
+# To check how long  it took to repair each keyspace 
+# egrep -iw "Repair command" debug.log|grep -v "Starting repair command"|awk '{print $1,$2,$4,$7,$8,$9,$10,$12,$13,$14,$15,$16,$17}'
+
+# To check the list of tables that got synced and how many times they are getting in sync
+# egrep -i "fully synced" debug.log|awk '{print $1,$2,$4,$7,$8,$9,$10,$12,$13,$14,$15,$16,$17}'
