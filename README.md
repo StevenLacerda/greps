@@ -5,24 +5,35 @@ directory recursively:
 
 greps [options]
 
-Possible options are:
+Possible options are (in normal scenarios, when you have a full diag, just run _greps -a_):
 
--a - nibbler, solr, config, greps
+-a 
+  nibbler,
+  config,
+  solr,
+  greps,
+  iostat,
+  histograms_and_queues,
+  tombstones
 
--c - config only
+-c config
 
--d - diag-import
+-g greps, tombstones
 
--g - greps only
+-n nibbler
 
--n - nibbler only
+-o six0
 
--o - six0
-
--s - solr only
+-s solr
 
 
 There are some options which are located at the bottom of the file and constantly get changed and added to,
 so refer to the bottom of the greps.sh file to gather the options available.
 
-You will need both Nibbler and Sperf in your path as well, as the script relies on them.
+You will need both Nibbler and Sperf in your path as well, as the script relies on them:
+
+https://github.com/riptano/Nibbler
+
+https://github.com/riptano/support_performance
+
+They will need to be in your path so that sperf and nibbler commands work from the script.
