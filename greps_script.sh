@@ -51,6 +51,7 @@ function echo_request() {
 # runs nibbler if no -l option
 function nibbler() {
 	# get version info
+	echo "Inside nibbler function"
 	version=$(egrep -i ".*" $(find . -name version | head -1))
 	major_version=$(echo $version | awk -F'.' '{print $NF}' | cut -c1-1)
 	node_status="Nibbler/Node_Status.out"
@@ -82,6 +83,7 @@ function nibbler() {
 
 
 function config() { 
+	echo "Inside config function"
 	touch $config_file
 	echo_request "YAML VALUES" $config_file
 
@@ -96,6 +98,7 @@ function config() {
 
 
 function sixO() {
+	echo "Inside sixO function"
 	touch $sixo
 	echo "6.x Specific greps" > $sixo
 	
@@ -127,6 +130,7 @@ function sixO() {
 
 
 function solr() {
+	echo "Inside solr function"
 	is_solr_enabled=`egrep "Search" ./Nibbler/Node_Status.out`
 	if [ -z "$is_solr_enabled" ]
 	then 
@@ -233,6 +237,7 @@ function solr() {
 
 
 function greps() {
+	echo "Inside greps function"
 	touch $warn
 	echo > $warn
 	touch $error
@@ -386,6 +391,7 @@ function greps() {
 }
 
 function tombstones() {
+	echo "Inside tombstones function"
 	echo_request "TOMBSTONE TABLES" $tombstone_file
 	egrep -iRh 'readcommand.*tombstone' ./ --include={system,debug}* | awk -F'FROM' '{print $2}' | awk -F'WHERE' '{print $1}' | sort | uniq -c | sort -nr >> $tombstone_file
 
@@ -403,6 +409,7 @@ function tombstones() {
 }
 
 function histograms_and_queues() {
+	echo "Inside histograms_and_queue function"
 	echo_request "CFHistograms > 1s" $histograms
 	egrep -iR "histograms" -A 9 ./ --include={cfhistograms,commands.txt} | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
 
@@ -419,6 +426,7 @@ function histograms_and_queues() {
 
 
 function diag-import() {
+	echo "Inside config function"
 	filename=$1
 	python3 ~/Downloads/1-scripts/diag-import-main/import $filename
 	python3 ~/Downloads/1-scripts/diag-viewer-main/app.py "$filename/diagnostics.db"
