@@ -29,6 +29,7 @@ histograms="Nibbler/1-histograms.out"
 drops="Nibbler/1-drops.out"
 queues="Nibbler/1-queues.out"
 iostat="Nibbler/1-iostat"
+large_partitions="Nibbler/1-large_partitions.out"
 hash_line="=========================================================================================================="
 
 
@@ -79,6 +80,8 @@ function nibbler() {
 	# echo >> $config_file
 	# echo "CONFIGURATION" >> $config_file 
 	# egrep -Rh '===== \d|Number|Machine' ./ --include=$cluster_config_summary | sed -e $'s/^====== /\\\n/g' >> $config_file
+
+
 }
 
 
@@ -96,6 +99,13 @@ function config() {
 }
 # end config file section
 
+
+function large_part() {
+	echo "Inside large_part function"
+	touch $large_partitions
+	echo_request "LARGE PARTITIONS - finds everything with " $large_partitions
+	egrep -iwR "Detected partition.*is greater than" --include={system,debug}* | cut -d ” ” -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
+}
 
 function sixO() {
 	echo "Inside sixO function"
@@ -449,12 +459,10 @@ function iostat() {
 
 function use_options() {
 	echo "Please specify an option:"
-	echo "-a - nibbler, solr, config, greps"
+	echo "-a - all (nibbler, solr, config, greps)"
 	echo "-c - config only"
-	echo "-d - diag-import"
 	echo "-g - greps only"
 	echo "-n - nibbler only"
-	echo "-o - six0"
 	echo "-s - solr only"
 }
 
