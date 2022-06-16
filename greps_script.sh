@@ -31,6 +31,7 @@ drops="Nibbler/1-drops.out"
 queues="Nibbler/1-queues.out"
 iostat="Nibbler/1-iostat"
 large_partitions="Nibbler/1-large_partitions.out"
+backups="Nibbler/1-backups"
 hash_line="=========================================================================================================="
 
 
@@ -445,18 +446,34 @@ function histograms_and_queues() {
 }
 
 function backups() {
+	touch $backups
+
 	# 1)To check all type of backups that ran(onserver or local or s3)
-	grep -iR "Backup Service beginning synchronization" ./ --include=agent.log
+	echo_request "CHECK ALL TYPES OF BACKUPS (ONSERVER, LOCAL, OR S3)" $backups
+	grep -iR "Backup Service beginning synchronization" ./ --include=agent.log >> $backups
 
 	# 2)Grep to check when the local file backups are running
-	grep -iR "Backup service synchronizing snapshot to" ./ --include=agent.log
+	echo_request "CHECK WHEN LOCAL FILE BACKUPS ARE RUNNING" $backups
+	grep -iR "Backup service synchronizing snapshot to" ./ --include=agent.log >> $backups
 
 	# 3)To check when onserver backup tags are removed
-	grep -iwR "Removing on server backups" ./ --include=agent.log |grep -v "Removing on server backups: ()"
+	echo_request "CHECK WHEN ON SERVER BACKUP TAGS ARE REMOVED" $backups
+	grep -iwR "Removing on server backups" ./ --include=agent.log |grep -v "Removing on server backups: ()" >> $backups
 
 	# 4)To check when the localfile backup tag is removed
-	grep -iwR "Successfully removed backup" ./ --include=agent.log
-	grep -iR "Removing tag" ./ --include=agent.log
+	echo_request "CHECK WHEN LOCALFILE BACKUP TAG IS REMOVED" $backups
+	grep -iwR "Successfully removed backup" ./ --include=agent.log >> $backups
+	grep -iR "Removing tag" ./ --include=agent.log >> $backups
+
+	# scheduled backup successful
+	echo_request "BACKUPS SUCCESSFUL" $backups
+	grep -iR "backup of all keyspaces was successful" ./ --include=opscenterd.log >> $backups
+
+	echo_request "BACKUPS OF ALL KEYSPACES FAILED" $backups
+	grep -iR "backup of all keyspaces failed" ./ --include=opscenterd.log >> $backups
+
+	echo_request "STARTING SCHEDULED BACKUP" $backups
+	grep -iR "starting scheduled backup job" ./ --include=opscenterd.log >> $backups
 }
 
 
@@ -487,6 +504,7 @@ function use_options() {
 	echo "-a - all (nibbler, solr, config, greps)"
 	echo "-b - backups"
 	echo "-c - config only"
+	echo "-d - diag import"
 	echo "-g - greps only"
 	echo "-n - nibbler only"
 	echo "-s - solr only"
