@@ -15,6 +15,7 @@
 mkdir Nibbler
 grep_file="Nibbler/1-greps.out"
 config_file="Nibbler/1-config.out"
+config_file_jvm="Nibbler/1-jvm-params.out"
 solr_file="Nibbler/1-solr.out"
 sperf_file="Nibbler/1-sperf-statuslogger.out"
 diag_file="Nibbler/1-sperf-diag.out"
@@ -96,15 +97,24 @@ function config() {
 		egrep -ih "^memtable_|^#.*memtable_.*:|^concurrent_|^commitlog_segment|^commitlog_total|^#.*commitlog_total.*:|^compaction_|^incremental_backups|^tpc_cores|^disk_access_mode|^file_cache_size_in_mb|^#.*file_cache_size_in_mb.*:" $f >> $config_file
 		echo >> $config_file
 	done
+
+	for f in `find . -type file -name jvm*`;
+	do
+		echo $f | grep -o '[0-9].*[0-9]' >> $config_file_jvm
+		grep -h "^[^#;]" $f | sed s/-XX://g >> $config_file_jvm
+		echo >> $config_file_jvm
+	done
 }
 # end config file section
 
 
-function large_part() {
-	echo "Inside large_part function"
+function find_large_partitions() {
+	echo "Inside large_partitions function"
 	touch $large_partitions
-	echo_request "LARGE PARTITIONS - finds everything with " $large_partitions
+	echo_request "READING LARGE PARTITIONS" $large_partitions
 	egrep -iwR "Detected partition.*is greater than" --include={system,debug}* | cut -d ” ” -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
+	echo_request "WRITING LARGE PARTITIONS" $large_partitions
+	egrep -iwR "writing large partition" --include={system,debug}* | cut -d ” ” -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
 }
 
 function sixO() {
@@ -270,7 +280,7 @@ function greps() {
 	# echo_request "COMMIT-LOG-ALLOCATE FLUSHES - TODAY" 
 	# egrep -ciR 'commit-log-allocator.*$today.*enqueuing' ./ --include={debug,output}* | sort -k 1 | awk -F':' '{print $1,$2}' | column -t >> $grep_file
 
-	echo_request "FLUSHES BY THREAD" 
+	echo_request "FLUSHES BY THREAD - refer to https://datastax.jira.com/wiki/spaces/~41089967/pages/2660761722/Flushing+by+thread+type" 
 	egrep -iRh 'enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | awk -F'(' '{print $1}' | awk -F'-' '{print $1}' | sort | uniq -c | sort >> $grep_file
 	# echo_request "FLUSHES BY THREAD - TODAY" 
 	# egrep -iRh '$today.*enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sort | uniq -c >> $grep_file
@@ -434,6 +444,21 @@ function histograms_and_queues() {
 	egrep -R "Latency waiting in queue" -A 20 ./ --include=tpstats | egrep ".*[3-9]\d\d\d\d\d\." >> $queues
 }
 
+function backups() {
+	# 1)To check all type of backups that ran(onserver or local or s3)
+	grep -iR "Backup Service beginning synchronization" ./ --include=agent.log
+
+	# 2)Grep to check when the local file backups are running
+	grep -iR "Backup service synchronizing snapshot to" ./ --include=agent.log
+
+	# 3)To check when onserver backup tags are removed
+	grep -iwR "Removing on server backups" ./ --include=agent.log |grep -v "Removing on server backups: ()"
+
+	# 4)To check when the localfile backup tag is removed
+	grep -iwR "Successfully removed backup" ./ --include=agent.log
+	grep -iR "Removing tag" ./ --include=agent.log
+}
+
 
 function diag-import() {
 	echo "Inside config function"
@@ -460,6 +485,7 @@ function iostat() {
 function use_options() {
 	echo "Please specify an option:"
 	echo "-a - all (nibbler, solr, config, greps)"
+	echo "-b - backups"
 	echo "-c - config only"
 	echo "-g - greps only"
 	echo "-n - nibbler only"
@@ -519,7 +545,12 @@ while true; do
 		iostat
 		histograms_and_queues
 		tombstones
+		find_large_partitions
 		# sixO
+		break
+		;;
+	-b)
+		backups
 		break
 		;;
  	-c) 
@@ -533,6 +564,8 @@ while true; do
     -g)
     	greps
     	tombstones
+    	histograms_and_queues
+    	config
     	break
     	;; 
     -n) 
