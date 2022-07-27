@@ -113,9 +113,9 @@ function find_large_partitions() {
 	echo "Inside large_partitions function"
 	touch $large_partitions
 	echo_request "READING LARGE PARTITIONS" $large_partitions
-	egrep -iwR "Detected partition.*is greater than" --include={system,debug}* | cut -d ” ” -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
+	egrep -iwR "Detected partition.*is greater than" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
 	echo_request "WRITING LARGE PARTITIONS" $large_partitions
-	egrep -iwR "writing large partition" --include={system,debug}* | cut -d ” ” -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
+	egrep -iwR "writing large partition" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
 }
 
 function sixO() {
