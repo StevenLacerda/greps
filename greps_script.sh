@@ -20,18 +20,18 @@ solr_file="Nibbler/1-solr.out"
 sperf_file="Nibbler/1-sperf-statuslogger.out"
 diag_file="Nibbler/1-sperf-diag.out"
 sixo="Nibbler/1-sixo.out"
-warn="Nibbler/1-warnings.out"
-error="Nibbler/1-errors.out"
+warn="Nibbler/3-warnings.out"
+error="Nibbler/3-errors.out"
 threads="Nibbler/1-threads.out"
-slow_queries="Nibbler/1-slow-queries.out"
+slow_queries="Nibbler/3-slow-queries.out"
 gcs="Nibbler/1-gcs.out"
-tombstone_file="Nibbler/1-tombstones.out"
-histograms="Nibbler/1-histograms.out"
-drops="Nibbler/1-drops.out"
-queues="Nibbler/1-queues.out"
+tombstone_file="Nibbler/2-tombstones.out"
+histograms="Nibbler/2-histograms.out"
+drops="Nibbler/2-drops.out"
+queues="Nibbler/2-queues.out"
 iostat="Nibbler/1-iostat"
-large_partitions="Nibbler/1-large_partitions.out"
-backups="Nibbler/1-backups"
+large_partitions="Nibbler/2-large_partitions.out"
+backups="Nibbler/2-backups"
 hash_line="=========================================================================================================="
 
 
@@ -323,16 +323,16 @@ function greps() {
 	echo "Usually means too many operations, check concurrent reads/writes in c*.yaml" >> $grep_file
 	egrep -R "RateLimiter.*currently applied" ./ --include={system,debug}* >> $grep_file
 
-	echo_request "GC - OVER 100ms" 
+	echo_request "GC - OVER 100ms - COUNT" 
 	egrep -ciR 'gcinspector.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
-	echo_request "GC - OVER 100ms TODAY" 
+	echo_request "GC - OVER 100ms TODAY - COUNT" 
 	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
-	echo_request "GC - GREATER THAN 1s" 
+	echo_request "GC - GREATER THAN 1s - COUNT" 
 	egrep -ciR 'gcinspector.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
 
-	echo_request "GC - GREATER THAN 1s TODAY" 
+	echo_request "GC - GREATER THAN 1s TODAY - COUNT" 
 	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
 
 	echo_request "GC GREATER THAN 1s AND BEFORE" 
