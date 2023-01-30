@@ -145,8 +145,11 @@ function greps() {
 	# echo_request "FLUSHES BY THREAD - TODAY" 
 	# egrep -iRh '$today.*enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sort | uniq -c >> $grep_file
 
-	echo_request "LARGEST 20 FLUSHES" 
+	echo_request "LARGEST 20 FLUSHES ON HEAP" 
 	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | tail -r -20 >> $grep_file
+
+	echo_request "LARGEST 20 FLUSHES OFF HEAP"
+    	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -k 4 -h | tail -r -20 | awk -F', ' '{printf ("%s, %s\n",$2,$1) }' >> $grep_file
 
 	# echo_request "SMALLEST 10 FLUSHES" 
 	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | head -10 >> $grep_file
