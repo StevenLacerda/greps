@@ -149,7 +149,7 @@ function greps() {
 	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | tail -r -20 >> $grep_file
 
 	echo_request "LARGEST 20 FLUSHES OFF HEAP"
-    	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -k 4 -h | tail -r -20 | awk -F', ' '{printf ("%s, %s\n",$2,$1) }' >> $grep_file
+    egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -k 4 -h | tail -r -20 | awk -F', ' '{printf ("%s, %s\n",$2,$1) }' >> $grep_file
 
 	# echo_request "SMALLEST 10 FLUSHES" 
 	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | head -10 >> $grep_file
@@ -372,10 +372,10 @@ function slow_queries() {
 	echo "Inside slow_queries function"
 
 	echo_request "10 LONGEST SLOW QUERIES" $slow_queries
-	egrep -iR 'select.*slow' ./ --include={system,debug}* | awk -F' time ' '{print $2}' | awk '{print $1}' | sort -hr | head -10 >> $slow_queries
+	egrep -R 'SELECT.*slow' ./ --include={system,debug}* | awk -F' time ' '{print $2}' | awk '{print $1}' | sort -hr | head -10 >> $slow_queries
 
 	echo_request "SLOW QUERIES" $slow_queries
-	egrep -iR 'select.*slow' ./ --include={system,debug}* >> $slow_queries
+	egrep -R 'SELECT.*slow' ./ --include={system,debug}* >> $slow_queries
 }
 
 function solr() {
