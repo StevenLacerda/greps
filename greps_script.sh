@@ -26,6 +26,7 @@ threads="Nibbler/1-threads.out"
 slow_queries="Nibbler/3-slow-queries.out"
 gcs="Nibbler/1-gcs.out"
 tombstone_file="Nibbler/2-tombstones.out"
+timeouts="Nibbler/2-timed-out"
 histograms="Nibbler/2-histograms.out"
 drops="Nibbler/2-drops.out"
 queues="Nibbler/2-queues.out"
@@ -129,26 +130,26 @@ function greps() {
 	touch $histograms
 
 	echo_request "DROPPED MESSAGES" 
-	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	echo_request "POSSIBLE NETWORK ISSUES - unexpected exception during request" 
-	grep -ciR 'Unexpected exception during request' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	grep -ciR 'Unexpected exception during request' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 	
 	echo_request "HINTED HANDOFFS TO ENDPOINTS" 
-	grep -R 'Finished hinted handoff' ./ --include={system,debug}* | awk -F'endpoint' '{print $2}' | awk '{print $1}' | sort | uniq -c | sort >> $grep_file
+	grep -R 'Finished hinted handoff' ./ --include={system,debug}* | awk -F'endpoint' '{print $2}' | awk '{print $1}' | sort -k1 -r -h | uniq -c | sort >> $grep_file
 
 	# echo_request "COMMIT-LOG-ALLOCATE FLUSHES - TODAY" 
 	# egrep -ciR 'commit-log-allocator.*$today.*enqueuing' ./ --include={debug,output}* | sort -k 1 | awk -F':' '{print $1,$2}' | column -t >> $grep_file
 
 	echo_request "FLUSHES BY THREAD - refer to https://datastax.jira.com/wiki/spaces/~41089967/pages/2660761722/Flushing+by+thread+type" 
-	egrep -iRh 'enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | awk -F'(' '{print $1}' | awk -F'-' '{print $1}' | sort | uniq -c | sort >> $grep_file
+	egrep -iRh 'enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | awk -F'(' '{print $1}' | awk -F'-' '{print $1}' | sort -k1 -r -h | uniq -c | sort >> $grep_file
 	# echo_request "FLUSHES BY THREAD - TODAY" 
 	# egrep -iRh '$today.*enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sort | uniq -c >> $grep_file
 
-	echo_request "LARGEST 20 FLUSHES ON HEAP" 
+	echo_request "LARGEST 10 FLUSHES ON HEAP" 
 	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | tail -r -20 >> $grep_file
 
-	echo_request "LARGEST 20 FLUSHES OFF HEAP"
+	echo_request "LARGEST 10 FLUSHES OFF HEAP"
     egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -k 4 -h | tail -r -20 | awk -F', ' '{printf ("%s, %s\n",$2,$1) }' >> $grep_file
 
 	# echo_request "SMALLEST 10 FLUSHES" 
@@ -160,8 +161,12 @@ function greps() {
 
 	# echo_request "AVERAGE FLUSH SIZE" 
 	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | awk 'BEGIN {p=1}; {for (i=1; i<=NF;i++) total = total+$i; p=p+1}; END {print sprintf("%.0f", total/p)}' | awk '{ byte =$1 /1024/1024; print byte " MB" }' >> $grep_file
+
+	echo_request "COMPACTION THROUGHPUT - LARGEST 5"
+	egrep -R "CompactionExecutor.*Throughput" ./ --include={system,debug}* | awk -F'ms.' '{print $2}' | egrep "MiB" | awk -F'Row' '{print $1}' | sort -k4 -r | head -5 >> $grep_file
+
 	echo_request "TOTAL COMPACTIONS" 
-	egrep -ciR 'Compacted' ./ --include={system,debug}* | sort -k 1 | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	egrep -ciR 'Compacted' ./ --include={system,debug}* | sort -k 1 | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	# echo_request "TOTAL COMPACTIONS IN LAST DAY" 
 	# egrep -ciR '$today.*Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
@@ -179,7 +184,7 @@ function greps() {
 	# measures the longest compaction times with node info
 	# .//nodes/10.36.27.157/logs/cassandra/debug.log	5,829,323ms
 	echo_request "LONGEST COMPACTION TIMES WITH NODE INFO"
-	egrep -R "Compacted\ \(" ./ --include=debug.log | egrep -o ".*?\,.*\dms"  | awk '{print $1,$NF}' | sed 's/:.* /\t/g' | sort -h -r -k2 | head -20 | sort -k2 -r -h | column -t >> $grep_file
+	egrep -R "Compacted\ \(" ./ --include=debug.log | egrep -o ".*?\,.*\dms"  | awk '{print $1,$NF}' | sed 's/:.* /\t/g' | sort -h -r -k2 | head -20 | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	echo_request "RATE LIMITER APPLIED"
 	echo "Usually means too many operations, check concurrent reads/writes in c*.yaml" >> $grep_file
@@ -215,7 +220,7 @@ function greps() {
 	fi
 
 	echo_request "MERGED COMPACTIONS COUNT"
-	egrep -Ric 'Compacted (.*).*]' ./ --include={debug,system}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	egrep -Ric 'Compacted (.*).*]' ./ --include={debug,system}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	echo_request "MERGED COMPACTIONS" 
 	egrep -R 'Compacted (.*).*]' ./ --include={debug,system}* | awk '$0 ~ /[1-9][0-9]\ sstables/{print $0}' >> $grep_file
@@ -235,7 +240,8 @@ function greps() {
 		egrep -iR 'Launching' ./ --include=opscenterd.log | egrep -o '\d{1,5}.*time to complete' | cut -d' ' -f5-60 | sort | uniq >> $grep_file
 
 		echo_request "NTP" 
-		egrep -iR 'time correct|exit status' ./ --include=ntpstat | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+		echo "NTP Responses: " $(egrep -iR 'time correct|exit status' ./ --include=ntpstat | wc -l) >> $grep_file
+		egrep -iR 'time correct|exit status' ./ --include=ntpstat | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 		echo_request "LCS TABLES"
 		egrep -iRh "create table|and compaction" $driver_file --include=schema| grep -B1 "LeveledCompactionStrategy" >> $grep_file
@@ -252,10 +258,10 @@ function greps() {
 	egrep -Rc "prepared statements discarded" ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
 	echo_request "AGGREGATION QUERY USED WITHOUT PARTITION KEY"
-	egrep -ciR 'Aggregation query used without partition key' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	egrep -ciR 'Aggregation query used without partition key' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	echo_request "CHUNK CACHE ALLOCATION"
-	egrep -ciR "Maximum memory usage reached.*cannot allocate chunk of" ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t  >> $grep_file
+	egrep -ciR "Maximum memory usage reached.*cannot allocate chunk of" ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t  >> $grep_file
 
 	echo_request "ERRORS" $error
 	egrep -R "ERROR" ./ --include={system,debug}* >> $error
@@ -335,6 +341,16 @@ function nibbler() {
 	# echo "CONFIGURATION" >> $config_file 
 	# egrep -Rh '===== \d|Number|Machine' ./ --include=$cluster_config_summary | sed -e $'s/^====== /\\\n/g' >> $config_file
 }
+
+function timeouts() {
+	echo "Inside timeouts function"
+	touch $timeouts
+	echo "Operation timed out" > $timeouts
+
+	echo_request "OPERATION TIMED OUT"
+	egrep -iR "Operation timed out" ./ --include={system,debug}* >> $timeouts
+}
+
 
 function sixO() {
 	echo "Inside sixO function"
@@ -568,6 +584,7 @@ while true; do
 		tombstones
 		find_large_partitions
 		slow_queries
+		timeouts
 		# sixO
 		break
 		;;
@@ -589,6 +606,7 @@ while true; do
     	histograms_and_queues
     	config
     	slow_queries
+    	timeouts
     	break
     	;; 
     -n) 
