@@ -112,10 +112,10 @@ function echo_request() {
 function find_large_partitions() {
 	echo "Inside large_partitions function"
 	touch $large_partitions
-	echo_request "READING LARGE PARTITIONS" $large_partitions
-	egrep -iwR "Detected partition.*is greater than" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
-	echo_request "WRITING LARGE PARTITIONS" $large_partitions
-	egrep -iwR "writing large partition" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' > $large_partitions
+	echo_request "READING LARGE PARTITIONS > 1GB" $large_partitions
+	egrep -iwR "Detected partition.*is greater than" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' >> $large_partitions
+	echo_request "WRITING LARGE PARTITIONS > 1GB" $large_partitions
+	egrep -iwR "writing large partition" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' >> $large_partitions
 }
 
 function greps() {
@@ -132,11 +132,11 @@ function greps() {
 	echo_request "DROPPED MESSAGES" 
 	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
-	echo_request "POSSIBLE NETWORK ISSUES - unexpected exception during request" 
+	echo_request "POSSIBLE NETWORK ISSUES - unexpected exception during request  - count of how many times the message is printed in the logs" 
 	grep -ciR 'Unexpected exception during request' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 	
 	echo_request "HINTED HANDOFFS TO ENDPOINTS" 
-	grep -R 'Finished hinted handoff' ./ --include={system,debug}* | awk -F'endpoint' '{print $2}' | awk '{print $1}' | sort -k1 -r -h | uniq -c | sort >> $grep_file
+	grep -R 'Finished hinted handoff' ./ --include={system,debug}* | awk -F'endpoint' '{print $2}' | awk '{print $1}' | sort -k1 -r -h | uniq -c | sort -k1 -h >> $grep_file
 
 	# echo_request "COMMIT-LOG-ALLOCATE FLUSHES - TODAY" 
 	# egrep -ciR 'commit-log-allocator.*$today.*enqueuing' ./ --include={debug,output}* | sort -k 1 | awk -F':' '{print $1,$2}' | column -t >> $grep_file
@@ -165,7 +165,7 @@ function greps() {
 	echo_request "COMPACTION THROUGHPUT - LARGEST 5"
 	egrep -R "CompactionExecutor.*Throughput" ./ --include={system,debug}* | awk -F'ms.' '{print $2}' | egrep "MiB" | awk -F'Row' '{print $1}' | sort -k4 -r | head -5 >> $grep_file
 
-	echo_request "TOTAL COMPACTIONS" 
+	echo_request "TOTAL COMPACTIONS - count of how many times the message is printed in the logs" 
 	egrep -ciR 'Compacted' ./ --include={system,debug}* | sort -k 1 | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	# echo_request "TOTAL COMPACTIONS IN LAST DAY" 
@@ -190,16 +190,16 @@ function greps() {
 	echo "Usually means too many operations, check concurrent reads/writes in c*.yaml" >> $grep_file
 	egrep -R "RateLimiter.*currently applied" ./ --include={system,debug}* >> $grep_file
 
-	echo_request "GC - OVER 100ms - COUNT" 
+	echo_request "GC - OVER 100ms - count of how many times the message is printed in the logs" 
 	egrep -ciR 'gcinspector.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
-	echo_request "GC - OVER 100ms TODAY - COUNT" 
+	echo_request "GC - OVER 100ms TODAY - count of how many times the message is printed in the logs" 
 	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
-	echo_request "GC - GREATER THAN 1s - COUNT" 
+	echo_request "GC - GREATER THAN 1s - count of how many times the message is printed in the logs" 
 	egrep -ciR 'gcinspector.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
 
-	echo_request "GC - GREATER THAN 1s TODAY - COUNT" 
+	echo_request "GC - GREATER THAN 1s TODAY - count of how many times the message is printed in the logs" 
 	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
 
 	echo_request "GC GREATER THAN 1s AND BEFORE" 
@@ -241,7 +241,7 @@ function greps() {
 
 		echo_request "NTP" 
 		echo "NTP Responses: " $(egrep -iR 'time correct|exit status' ./ --include=ntpstat | wc -l) >> $grep_file
-		egrep -iR 'time correct|exit status' ./ --include=ntpstat | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
+		egrep -iR 'time correct|exit status' ./ --include=ntpstat | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
 		echo_request "LCS TABLES"
 		egrep -iRh "create table|and compaction" $driver_file --include=schema| grep -B1 "LeveledCompactionStrategy" >> $grep_file
@@ -254,13 +254,16 @@ function greps() {
 		egrep -iR 'create keyspace' $driver_file --include=schema | cut -d ' ' -f 3-40 | awk -F'AND' '{print "ALTER KEYSPACE",$1}' | sort -k1 >> $grep_file
 	fi
 
-	echo_request "PREPARED STATEMENTS DISCARDED"
+	echo_request "PREPARED STATEMENTS DISCARDED - count of how many times the message is printed in the logs"
 	egrep -Rc "prepared statements discarded" ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
-	echo_request "AGGREGATION QUERY USED WITHOUT PARTITION KEY"
+	echo_request "PREPARED STATEMENTS DISCARDED - the actual number of statements discarded in the last minute"
+	egrep -R "prepared statements discarded" ./ --include={system,debug}* | awk -F' - ' '{print $2}' | awk '{print $1}' | sort -r -h | head -5 >> $grep_file
+
+	echo_request "AGGREGATION QUERY USED WITHOUT PARTITION KEY - count of how many times the message is printed in the logs"
 	egrep -ciR 'Aggregation query used without partition key' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
-	echo_request "CHUNK CACHE ALLOCATION"
+	echo_request "CHUNK CACHE ALLOCATION - count of how many times the message is printed in the logs"
 	egrep -ciR "Maximum memory usage reached.*cannot allocate chunk of" ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t  >> $grep_file
 
 	echo_request "ERRORS" $error
@@ -347,7 +350,7 @@ function timeouts() {
 	touch $timeouts
 	echo "Operation timed out" > $timeouts
 
-	echo_request "OPERATION TIMED OUT"
+	echo_request "OPERATION TIMED OUT" $timeouts
 	egrep -iR "Operation timed out" ./ --include={system,debug}* >> $timeouts
 }
 
@@ -357,25 +360,25 @@ function sixO() {
 	touch $sixo
 	echo "6.x Specific greps" > $sixo
 	
-	echo_request "TOO MANY PENDING REQUESTS" $sixo
+	echo_request "TOO MANY PENDING REQUESTS - count of how many times the message is printed in the logs" $sixo
 	egrep -ciR 'Too many pending remote requests' ./ --include={system,debug}* >> $sixo
 
 	echo_request "BACKPRESSURE REJECTION" $sixo
 	egrep -R 'Backpressure rejection while receiving' ./ --include={system,debug}* | cut -d '/' -f 1|uniq -c >> $sixo
 
-	echo_request "TIMED OUT ASYNC READS" $sixo
+	echo_request "TIMED OUT ASYNC READS - count of how many times the message is printed in the logs" $sixo
 	egrep -ciR 'Timed out async read from org.apache.cassandra.io.sstable.format.AsyncPartitionReader' ./ --include={system,debug}* >> $sixo
 
-	echo_request "WRITES.WRITE ERRORS" $sixo
+	echo_request "WRITES.WRITE ERRORS - count of how many times the message is printed in the logs" $sixo
 	egrep -ciR 'Unexpected error during execution of request WRITES.WRITE' ./ --include={system,debug}* >> $sixo
 
-	echo_request "WRITES.WRITE BACKPRESSURE" $sixo
+	echo_request "WRITES.WRITE BACKPRESSURE - count of how many times the message is printed in the logs" $sixo
 	egrep -ciR 'backpressure rejection.*WRITES.WRITE' ./ --include={system,debug}* >> $sixo
 
-	echo_request "READS.READ BACKPRESSURE" $sixo
+	echo_request "READS.READ BACKPRESSURE - count of how many times the message is printed in the logs" $sixo
 	egrep -ciR 'backpressure rejection.*READS.READ' ./ --include={system,debug}* >> $sixo
 
-	echo_request "READS.READ ERRORS" $sixo
+	echo_request "READS.READ ERRORS - count of how many times the message is printed in the logs" $sixo
 	egrep -ciR 'Unexpected error during execution of request READS.READ' ./ --include={system,debug}* >> $sixo
 
 	echo_request 'THREADS WITH PENDING' $sixo
@@ -451,7 +454,7 @@ function solr() {
 	echo_request "QUERY RESPONSE TIMEOUT" $solr_file
 	grep -R "Query response timeout of" ./ --include={system,debug}* >> $solr_file
 
-	echo_request "LUCENE MERGES" $solr_file
+	echo_request "LUCENE MERGES  - count of how many times the message is printed in the logs" $solr_file
 	echo "total lucene merges" >> $solr_file
 	grep -ciR "Lucene merge" ./ --include={system,debug}* | egrep ":[1-9]" >> $solr_file
 
@@ -469,7 +472,7 @@ function solr() {
 	grep -R "Lucene merge" ./ --include={system,debug}* | awk -F'took' '{print $2}' | awk '($1>=1){print $1}' | wc -l >> $solr_file
 
 	# you see above there that NTR is kicking in.. glorified backpressure but not yet hitting backpressure just slowing down commit rate
-	echo_request "INCREASING SOFT COMMIT RATE - Increasing commit rate before backpressure actually kicks in" >> $solr_file
+	echo_request "INCREASING SOFT COMMIT RATE - Increasing commit rate before backpressure actually kicks in" $solr_file
 	egrep -iR "Increasing soft commit max time" ./ --include={system,debug}* >> $solr_file
 
 	# filter cache eviction
@@ -508,7 +511,7 @@ function tombstones() {
 	echo_request "TOMBSTONE MAX COUNT BY TABLE - max number of tombstones hit on a given query" $tombstone_file
 	egrep -iRh 'tombstone' ./ --include={system,debug}*  | grep -io 'scanned over.*\|rows and.*' | awk '{$1=$2="";print $0}' | sed 's/tombstone.*FROM//g' | awk '{print $1,$2}' | sort -nrk1 | sort -u -k2 >> $tombstone_file
 
-	echo_request "TOMBSTONE ALERTS BY NODE - number of tombstone alerts, not max hit on a given query, but overall number of alerts in diag" $tombstone_file
+	echo_request "TOMBSTONE ALERTS BY NODE- count of how many times the message is printed in the logs" $tombstone_file
 	egrep -ciR 'tombstone' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $tombstone_file
 
 	echo_request "TOMBSTONE QUERY ABORTS BY TABLE - max threshold hit, so query aborted" $tombstone_file
