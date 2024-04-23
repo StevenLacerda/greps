@@ -278,7 +278,7 @@ function greps() {
 
 	echo_request "DROPPED" $drops
 	echo "All dropped messages (mutation, read, hint)" >> $drops
-	egrep -R "messages were dropped in last" ./ --include={system,debug}* >> $drops
+	egrep -R "messages were dropped" ./ --include={system,debug}* >> $drops
 }
 
 function histograms_and_queues() {
@@ -412,7 +412,7 @@ function solr() {
 	egrep -iRc 'ttl.*scheduler.*expired' ./ --include={system,debug}* | egrep ":[1-9]" >> $solr_file
 
 	h=`egrep -iRh 'max_docs_per_batch' ./ --include=dse.yaml | head -1 | awk '{print $2}'`
-	echo_request "SOLR DELETES HITTING $h THRESHOLD" $solr_file
+	echo_request "SOLR DELETES HITTING $h THRESHOLD - increase max_docs_per_batch in dse.yaml (default is 4096)" $solr_file
 	egrep -icR "ttl.*scheduler.*expired.*$h" ./ --include={system,debug}* | egrep ":[1-9]" >> $solr_file
 
 	echo_request "SOLR AUTOCOMMIT" $solr_file
