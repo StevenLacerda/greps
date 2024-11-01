@@ -5,13 +5,6 @@
 # greps -a for everything, or just greps for everything
 
 
-# TODO
-# add a grep for chrony
-# add a grep for average flush size
-# add a grep for ERROR
-# add a grep for timeout, timedout
-
-
 mkdir Nibbler
 grep_file="Nibbler/1-greps.out"
 config_file="Nibbler/1-config.out"
@@ -112,8 +105,10 @@ function echo_request() {
 function find_large_partitions() {
 	echo "Inside large_partitions function"
 	touch $large_partitions
+	
 	echo_request "READING LARGE PARTITIONS > 1GB" $large_partitions
-	egrep -iwR "Detected partition.*is greater than" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' >> $large_partitions
+	egrep -iwR "Detected partition.*greater than" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' >> $large_partitions
+	
 	echo_request "WRITING LARGE PARTITIONS > 1GB" $large_partitions
 	egrep -iwR "writing large partition" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' >> $large_partitions
 }
@@ -124,86 +119,81 @@ function greps() {
 	echo > $warn
 	touch $error
 	echo > $error
-	# touch $threads
-	# echo > $threads
 	touch $tombstone_file
 	touch $histograms
 
-	echo_request "DROPPED MESSAGES" 
-	egrep -icR 'DroppedMessages.java' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
-
 	echo_request "POSSIBLE NETWORK ISSUES - unexpected exception during request  - count of how many times the message is printed in the logs" 
-	grep -ciR 'Unexpected exception during request' ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
+	grep -ciR 'Unexpected exception during request' ./ --include=system* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 	
 	echo_request "HINTED HANDOFFS TO ENDPOINTS" 
-	grep -R 'Finished hinted handoff' ./ --include={system,debug}* | awk -F'endpoint' '{print $2}' | awk '{print $1}' | sort -k1 -r -h | uniq -c | sort -k1 -h >> $grep_file
-
-	# echo_request "COMMIT-LOG-ALLOCATE FLUSHES - TODAY" 
-	# egrep -ciR 'commit-log-allocator.*$today.*enqueuing' ./ --include={debug,output}* | sort -k 1 | awk -F':' '{print $1,$2}' | column -t >> $grep_file
+	grep -R 'Finished hinted handoff' ./ --include=system* | awk -F'endpoint' '{print $2}' | awk '{print $1}' | sort -k1 -r -h | uniq -c | sort -k1 -h >> $grep_file
 
 	echo_request "FLUSHES BY THREAD - refer to https://datastax.jira.com/wiki/spaces/~41089967/pages/2660761722/Flushing+by+thread+type" 
-	egrep -iRh 'enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | awk -F'(' '{print $1}' | awk -F'-' '{print $1}' | sort -k1 -r -h | uniq -c | sort >> $grep_file
-	# echo_request "FLUSHES BY THREAD - TODAY" 
-	# egrep -iRh '$today.*enqueuing flush of' ./ --include={system,debug}* | awk -F']' '{print $1}' | awk -F'[' '{print $2}' | sed 's/:.*//g' | sort | uniq -c >> $grep_file
+	counts=$(egrep -iRh 'enqueuing flush of' ./ --include=debug* | \
+         awk -F']' '{print $1}' | \
+         awk -F'[' '{print $2}' | \
+         sed 's/:.*//g' | \
+         awk -F'(' '{print $1}' | \
+         awk -F'-' '{print $1}' | \
+         sort -k1 -r -h | \
+         uniq -c)
+
+	# Calculate the total count of all threads
+	total=$(echo "$counts" | awk '{sum += $1} END {print sum}')
+
+	# Calculate the percentage for each thread and save to the file
+	echo "$counts" | awk -v total="$total" '{printf "%s %s %.2f%%\n", $1, $2, ($1 / total) * 100}' | column -t >> "$grep_file"
+
 
 	echo_request "LARGEST 10 FLUSHES ON HEAP" 
-	egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | tail -r -20 >> $grep_file
+	egrep -iR 'enqueuing flush of' ./ --include=debug* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | tail -r -20 >> $grep_file
 
 	echo_request "LARGEST 10 FLUSHES OFF HEAP"
-    egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -k 4 -h | tail -r -20 | awk -F', ' '{printf ("%s, %s\n",$2,$1) }' >> $grep_file
-
-	# echo_request "SMALLEST 10 FLUSHES" 
-	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | head -10 >> $grep_file
+    egrep -iR 'enqueuing flush of' ./ --include=debug* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -k 4 -h | tail -r -20 | awk -F', ' '{printf ("%s, %s\n",$2,$1) }' >> $grep_file
 
 	echo_request "FLUSHING LARGEST"
 	echo "Any flushes larger than .9x" >> $grep_file
 	egrep -R "Flushing largest.*\.[8-9][0-9]" ./ --include=debug.log >> $grep_file
 
-	# echo_request "AVERAGE FLUSH SIZE" 
-	# egrep -iR 'enqueuing flush of' ./ --include={system,debug}* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | awk 'BEGIN {p=1}; {for (i=1; i<=NF;i++) total = total+$i; p=p+1}; END {print sprintf("%.0f", total/p)}' | awk '{ byte =$1 /1024/1024; print byte " MB" }' >> $grep_file
-
 	echo_request "COMPACTION THROUGHPUT - LARGEST 5"
-	egrep -R "CompactionExecutor.*Throughput" ./ --include={system,debug}* | awk -F'ms.' '{print $2}' | egrep "MiB" | awk -F'Row' '{print $1}' | sort -k4 -r | head -5 >> $grep_file
+	egrep -R "CompactionExecutor.*Throughput" ./ --include=debug* | awk -F'ms.' '{print $2}' | egrep "MiB" | awk -F'Row' '{print $1}' | sort -k4 -r | head -5 >> $grep_file
 
 	echo_request "TOTAL COMPACTIONS - count of how many times the message is printed in the logs" 
-	egrep -ciR 'Compacted' ./ --include={system,debug}* | sort -k 1 | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
-
-	# echo_request "TOTAL COMPACTIONS IN LAST DAY" 
-	# egrep -ciR '$today.*Compacted' ./ --include={system,debug}* | sort -k 1 >> $grep_file
+	egrep -ciR 'Compacted' ./ --include=debug* | sort -k 1 | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	# shows the number of compactions by table
 	# 34113 [ disk3 c_data srm ts_sample-a35ac480045811ebab44a71fdbae4c86
 	echo_request "TABLES COMPACTED"
-	egrep -R "Compacted\ \(" ./ --include=debug.log | awk -F'sstables to ' '{print $2}' | awk -F',' '{print $1}' | sed 's/\// /g' | awk '{$NF=""; print $0}' | sort | uniq -c | sort -hr | head -10 >> $grep_file
+	egrep -R "Compacted\ \(" ./ --include=debug* | awk -F'sstables to ' '{print $2}' | awk -F',' '{print $1}' | sed 's/\// /g' | awk '{$NF=""; print $0}' | sort | uniq -c | sort -hr | head -10 >> $grep_file
 
 	# measures the longest compactions times, not by node, just overall
 	# [/disk3/c_data/srm/ts_sample-a35ac480045811ebab44a71fdbae4c86/nb-1882706-big,] 5,829,323ms
 	echo_request "LONGEST COMPACTION TIMES"
-	egrep -R "Compacted\ \(" ./ --include=debug.log | egrep -o "\[\/.*?\,.*\dms" | awk '{print $1,$(NF)}' | sort -h -k2 -r | head -20 >> $grep_file
+	egrep -R "Compacted\ \(" ./ --include=debug* | egrep -o "\[\/.*?\,.*\dms" | awk '{print $1,$(NF)}' | sort -h -k2 -r | head -20 >> $grep_file
 
 	# measures the longest compaction times with node info
 	# .//nodes/10.36.27.157/logs/cassandra/debug.log	5,829,323ms
 	echo_request "LONGEST COMPACTION TIMES WITH NODE INFO"
-	egrep -R "Compacted\ \(" ./ --include=debug.log | egrep -o ".*?\,.*\dms"  | awk '{print $1,$NF}' | sed 's/:.* /\t/g' | sort -h -r -k2 | head -20 | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
+	egrep -R "Compacted\ \(" ./ --include=debug* | egrep -o ".*?\,.*\dms"  | awk '{print $1,$NF}' | sed 's/:.* /\t/g' | sort -h -r -k2 | head -20 | sort -k2 -r -h |  awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	echo_request "RATE LIMITER APPLIED"
 	echo "Usually means too many operations, check concurrent reads/writes in c*.yaml" >> $grep_file
 	egrep -R "RateLimiter.*currently applied" ./ --include={system,debug}* >> $grep_file
 
 	echo_request "GC - OVER 100ms - count of how many times the message is printed in the logs" 
-	egrep -ciR 'gcinspector.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	egrep -ciR 'gcinspector.*\d\d\dms' ./ --include=system* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
 	echo_request "GC - OVER 100ms TODAY - count of how many times the message is printed in the logs" 
-	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
+	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\dms' ./ --include=system* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 | awk -F: '{print $1,$2}' | sort -k2 -r -h | column -t >> $grep_file
 
 	echo_request "GC - GREATER THAN 1s - count of how many times the message is printed in the logs" 
-	egrep -ciR 'gcinspector.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
+	egrep -ciR 'gcinspector.*\d\d\d\dms' ./ --include=system* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
 
 	echo_request "GC - GREATER THAN 1s TODAY - count of how many times the message is printed in the logs" 
-	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\d\dms' ./ --include={system,debug}* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
+	egrep -ciR '$(date +%Y-%m-%d).*gcinspector.*\d\d\d\dms' ./ --include=system* | awk -F':' '($2>0){print $1,$2,$3}' | sort -k 1 >> $grep_file
 
 	echo_request "GC GREATER THAN 1s AND BEFORE" 
-	egrep -iR -B 5 'gcinspector.*\d\d\d\dms' ./ --include={system,debug}* >> $grep_file
+	egrep -iR -B 5 'gcinspector.*\d\d\d\dms' ./ --include=system* >> $grep_file
 
 
 
@@ -211,7 +201,7 @@ function greps() {
 	if [ ! -z "$schema_file" ]
 	then
 		echo_request "SSTABLE COUNT" 
-		egrep -Rh -A 1 'Table:' ./ --include=cfstats | awk '{key=$0; getline; print key ", " $0;}' | sed 's/[(,=]//g' | awk '$5>30 {print $1,$2,$3,"\t",$4,$5}' | column -t >> $grep_file
+		egrep -Rh -A 1 'Table:' ./ --include=cfstats | awk '{key=$0; getline; print key ", " $0;}' | sed 's/[(,=]//g' | awk '$5>100 {print $1,$2,$3,"\t",$4,$5}' | column -t >> $grep_file
 
 		echo_request "PENDING TASKS" 
 		egrep -iR '^-\ ' ./ --include=compactionstats >> $grep_file
@@ -220,18 +210,10 @@ function greps() {
 	fi
 
 	echo_request "MERGED COMPACTIONS COUNT"
-	egrep -Ric 'Compacted (.*).*]' ./ --include={debug,system}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
+	egrep -Ric 'Compacted (.*).*]' ./ --include=debug* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	echo_request "MERGED COMPACTIONS" 
-	egrep -R 'Compacted (.*).*]' ./ --include={debug,system}* | awk '$0 ~ /[1-9][0-9]\ sstables/{print $0}' >> $grep_file
-
-	echo_request "MERGED COMPACTIONS - TODAY" 
-	egrep -R '$today.*Compacted (.*).*]' ./ --include={debug,system}* | awk '$0 ~ /[1-9][0-9]\ sstables/{print $0}' >> $grep_file
-
-	# echo_request "ALERT CLASSES" 
-	# egrep -R 'WARN|ERROR' --include={system,debug}* ./ | awk -F']' '{print $1}' | awk -F[ '{print $2}' | sed 's/[0-9:#]//g' | sort | uniq -c >> $grep_file
-
-
+	egrep -R 'Compacted (.*).*]' ./ --include=debug* | awk '$0 ~ /[2-9][0-9]\ sstables/{print $0}' >> $grep_file
 
 	driver_file=$(find . -name driver | tail -1) 
 	if [ ! -z $driver_file ]
@@ -265,24 +247,87 @@ function greps() {
 
 	echo_request "CHUNK CACHE ALLOCATION - count of how many times the message is printed in the logs"
 	egrep -ciR "Maximum memory usage reached.*cannot allocate chunk of" ./ --include={system,debug}* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t  >> $grep_file
+}
+
+function error() {
+	echo_request "ERROR TYPES - COUNT" $error
+	egrep -R "ERROR" ./ --include={system,debug}* | awk -F']' '{print $2}' | awk '{print $3}' | sort | uniq -c >> $error
+
+	echo_request "CORRUPT SSTABLES" $error
+	egrep -R "Corrupt" ./ --include={system,debug}* >> $error
 
 	echo_request "ERRORS" $error
 	egrep -R "ERROR" ./ --include={system,debug}* >> $error
+}
+
+function warn() {
+	echo_request "WARN TYPES - COUNT" $warn
+	egrep -R "WARN" ./ --include={system,debug}* | grep -v "SyncUtil.java" | awk -F']' '{print $2}' | awk '{print $3}' | sort | uniq -c >> $warn
 
 	echo_request "WARN" $warn
-	egrep -R "WARN" ./ --include={system,debug}* >> $warn
+	egrep -R "WARN" ./ --include={system,debug}* | grep -v "SyncUtil.java" >> $warn
+}
 
-	# echo_request "THREADS" $threads
-	# echo "All threads from system and debug logs" >> $threads
-	# egrep -R ".*" ./ --include={system,debug}* | awk -F'[' '{print $2}' | awk -F']' '{print $1}' | sed 's|:.*||g' | sed 's|[(#].*||g' | sed 's/Repair-Task.*/Repair-Task/g' | sort -k2 | uniq -c | sort -k1 -n -r >> $threads
+function dropped_messages() {
+	echo "Inside dropped_messages function"
+	
+	echo_request "DROPPED MESSAGES" > $drops
+	echo_request "COUNT BY NODE - number of drops per node" $drops
+	
+	dropped_messages=$(egrep -iR 'DroppedMessages.java' ./ --include=system*)
+	
+	if [ -z "$dropped_messages" ]; then
+	    echo "The dropped_messages variable is empty." >> $drops
+	else
+		echo "$dropped_messages" | while IFS= read -r line
+		do
+		    echo "$line" | egrep ":[1-9]" | awk -F: '{print $1}' 
+		done |  uniq -c | sort -r -k1 | column -t >> $drops
 
-	echo_request "DROPPED" $drops
-	echo "All dropped messages (mutation, read, hint)" >> $drops
-	egrep -R "messages were dropped" ./ --include={system,debug}* >> $drops
+		echo_request "DROPPED TYPE COUNT" $drops
+		echo "$dropped_messages" | while IFS= read -r line
+		do
+		    echo "$line" | awk -F' - ' '{print $2}' | awk '{print $1}' 
+		done | sort -h | uniq -c | sort -k1 -h -r | column -t >> $drops
+
+		echo_request "INTERNAL OR CROSS NODE" $drops
+
+		# Variables to store the sum of internal and cross-node dropped messages
+		sum_internal=0
+		sum_cross_node=0
+
+		# Iterate over each line in the log files
+		while read -r line
+		do
+		  # Extract the internal and cross-node dropped messages using awk
+		  internal=$(echo "$line" | awk -F'internal and' '{print $(NF-1)}' | awk '{print $NF}')
+		  cross_node=$(echo "$line" | awk -F'cross node' '{print $(NF-1)}' | awk '{print $NF}')
+
+		  # Add to the respective sums if values are numbers
+		  if [[ "$internal" =~ ^[0-9]+$ ]]; then
+		    sum_internal=$((sum_internal + internal))
+		  fi
+		  if [[ "$cross_node" =~ ^[0-9]+$ ]]; then
+		    sum_cross_node=$((sum_cross_node + cross_node))
+		  fi
+		done <<< "$dropped_messages"
+
+		# Output the results
+		echo "Total internal dropped messages: $sum_internal" >> $drops
+		echo "Total cross-node dropped messages: $sum_cross_node" >> $drops
+	fi
+
+	echo_request "OUTBOUND MESSAGE QUEUE FULL" $drops
+	egrep -R "outbound message queue is full" --include=system* | awk '{print $1, $2, $(NF-4)}' | sort -h | uniq -c | awk '{
+	    split($2, parts, "/");
+	    ip = parts[3];
+	    print $1, ip, $3, $4, $5;
+	}' | column -t | sort -k2 >> $drops
 }
 
 function histograms_and_queues() {
 	echo "Inside histograms_and_queue function"
+	
 	echo_request "CFHistograms > 1s" $histograms
 	egrep -iR "histograms" -A 9 ./ --include={cfhistograms,commands.txt} | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
 
@@ -290,11 +335,11 @@ function histograms_and_queues() {
 	egrep -iR "histograms" -A 9 ./ --include={proxyhistograms,commands.txt} | egrep "Max.*\d\d\d\d\d\d\d\." -B 9 >> $histograms
 
 	echo_request "Latency waiting in Queue" $queues
-	echo "Track if a queue is high from tpstats. We're looking for anything over 300ms" >> $queues
+	echo "Track if a queue is high from tpstats. We're looking for anything over 500ms" >> $queues
 	echo "                                Message type           Dropped                  Latency waiting in queue (micros)                                    
                                                                                 50%               95%               99%               Max" >> $queues
 	echo "" >> $queues
-	egrep -R "Latency waiting in queue" -A 20 ./ --include=tpstats | egrep ".*[3-9]\d\d\d\d\d\." >> $queues
+	egrep -R "Latency waiting in queue" -A 20 ./ --include=tpstats | egrep ".*[5-9]\d\d\d\d\d\." >> $queues
 }
 
 function iostat() {
@@ -319,30 +364,19 @@ function nibbler() {
 	version=$(egrep -i ".*" $(find . -name version | head -1))
 	major_version=$(echo $version | awk -F'.' '{print $NF}' | cut -c1-1)
 	node_status="Nibbler/Node_Status.out"
-	today=$(find . -name "system.log" -o -name "debug.*"| xargs tail -n1 | egrep -oh '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+	today=$(find . -name "system.log" -o -name "debug.*" -print -quit | xargs tail -n1 | egrep -oh '[0-9]{4}-[0-9]{2}-[0-9]{2}')
 	java -jar ~/Downloads/~nibbler/Nibbler.jar ./
 	cluster_config_summary="Cluster_Configuration_Summary.out"
 	egrep -i ".*" $(find . -name version | head -1) >> $grep_file
 
-	# echo "system.log start: " >> $grep_file
-	for f in `find ./ -type file -name system.log -o -name debug.log`; 
-		do 
-			echo $f >> $grep_file
-			grep -o "\d\d\d\d-\d\d-\d\d\ \d\d:\d\d" $f | head -1 >> $grep_file
-			grep -o "\d\d\d\d-\d\d-\d\d\ \d\d:\d\d" $f | tail -1 >> $grep_file
-			echo >> $grep_file
-		done
-
-	# echo_request "NODE STATUS"
-	# cat $node_status >> $grep_file
-
-	# config file section
-	# echo "DISK CONFIGURATION" >> $config_file
-	# egrep -Rh '======\ |^\s.*-' ./ --include=$cluster_config_summary | sed -e $'s/^====== /\\\n/g' >> $config_file
-
-	# echo >> $config_file
-	# echo "CONFIGURATION" >> $config_file 
-	# egrep -Rh '===== \d|Number|Machine' ./ --include=$cluster_config_summary | sed -e $'s/^====== /\\\n/g' >> $config_file
+	# # echo "system.log start: " >> $grep_file
+	# for f in `find ./ -type file -name system.log -o -name debug.log`; 
+	# 	do 
+	# 		echo $f >> $grep_file
+	# 		grep -o "\d\d\d\d-\d\d-\d\d\ \d\d:\d\d" $f | head -1 >> $grep_file
+	# 		grep -o "\d\d\d\d-\d\d-\d\d\ \d\d:\d\d" $f | tail -1 >> $grep_file
+	# 		echo >> $grep_file
+	# 	done
 }
 
 function timeouts() {
@@ -390,11 +424,39 @@ function slow_queries() {
 	touch $slow_queries
 	echo "Inside slow_queries function"
 
-	echo_request "10 LONGEST SLOW QUERIES" $slow_queries
-	egrep -R 'SELECT.*slow' ./ --include={system,debug}* | awk -F' time ' '{print $2}' | awk '{print $1}' | sort -hr | head -10 >> $slow_queries
+	# Capture the grep results in a variable
+	slowqueryresults=$(egrep -R 'SELECT.*slow' ./ --include=debug*)
 
-	echo_request "SLOW QUERIES" $slow_queries
-	egrep -R 'SELECT.*slow' ./ --include={system,debug}* >> $slow_queries
+	if [ -z "$slowqueryresults" ]; then
+	    echo "The slowqueryresults variable is empty." >> $slow_queries
+	else
+		echo_request "10 LONGEST SLOW QUERIES" $slow_queries
+		echo "$slowqueryresults" | while IFS= read -r line
+		do
+		    echo "$line" | awk -F' time ' '{print $2}' | awk '{print $1}'
+		done | sort -hr | head -10 >> $slow_queries
+
+		echo_request "TABLES & COUNT BY TABLE" $slow_queries
+		echo "$slowqueryresults" | while IFS= read -r line
+		do
+		    echo "$line" | awk -F'FROM' '{print $2}' | awk '{print $1}'
+		done | sort | uniq -c >> $slow_queries
+
+		echo_request "COUNT BY NODE" $slow_queries
+		echo "$slowqueryresults" | while IFS= read -r line
+		do
+		    echo "$line" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}'
+		done | sort | uniq -c | sort -h -k1 >> $slow_queries
+
+		echo_request "SLOW QUERIES - sorted by table" $slow_queries
+		echo "$slowqueryresults" | while IFS= read -r line
+		do
+		    echo "$line" | awk -F'[<> ]+' '{for(i=1;i<=NF;i++) if ($i == "FROM") print $(i+1), $0}'
+		done | sort -k1,1 >> $slow_queries
+
+		echo_request "SLOW QUERIES - sorted by node" $slow_queries
+		echo "$slowqueryresults" >> $slow_queries
+	fi
 }
 
 function solr() {
@@ -532,49 +594,6 @@ function use_options() {
 	echo "-s - solr only"
 }
 
-# # ========================= cassandra.yaml differ =========================
-# rm "${grep_file}/cassandra.yaml.diff"
-
-# for f in $(find ./ -type file -name cassandra.yaml); 
-# do 
-# egrep -o "^[a-zA-Z].*" $f | sort > "${f}.sorted"
-# done
-
-# previous_file=""
-# i=0
-# for f in $(find ./ -type file -name cassandra.yaml.sorted); 
-# do
-# if [ $i -eq 0 ]
-# then 
-# previous_file=$f
-# else
-# echo "=====================================" >> $grep_file/cassandra.yaml.diff
-# echo $f >> $grep_file/cassandra.yaml.diff
-# echo $previous_file >> $grep_file/cassandra.yaml.diff
-# diff $previous_file $f >> $grep_file/cassandra.yaml.diff
-# fi
-# i=1
-# done
-
-
-
-# echo >> $grep_file
-# echo >> $grep_file
-# echo "************ ADDITIONAL ************" >> $grep_file
-
-
-# Get the first schema, and check partition keys
-# to see if they're the same or not and count them
-# echo_request "same primary key - data density skewed" 
-# egrep -ihR 'create table|primary key \(' $(find . -name schema | head -1) | sed 'N;s/\n/ /' | sed 's/CREATE\ TABLE/ /g' | sed 's/PRIMARY\ KEY/ /g' | column -t | sort -k 3
-
-# using awk to search
-# awk '/CREATE TABLE/{print $1,$2,$3," with read_repair_chance=0 and dclocal_read_repair_chance=0;"}' ./schema | sed 's/(//'
-
-# get cfstats table sizes
-#egrep -R "Keyspace|Table:|Space" . --include=cfstats
-
-
 while true; do
 	case $1 in 
 	-a) 
@@ -588,6 +607,9 @@ while true; do
 		find_large_partitions
 		slow_queries
 		timeouts
+		dropped_messages
+		warn
+		error
 		# sixO
 		break
 		;;
@@ -610,6 +632,7 @@ while true; do
     	config
     	slow_queries
     	timeouts
+    	dropped_messages
     	break
     	;; 
     -n) 
@@ -656,52 +679,3 @@ sperf core gc >> $gcs
 # when done, ring the alert
 echo "DONE"
 tput bel
-
-
-
-
-
-# from cqlsh tracing session, gather shard info:
-# $grep "Processed response from shard" alln01-at-hcas18.txt |awk -F "," '{print $1}' |grep numFound | tr " " "*" | tr "\t" "&" |sed 's|*||g' |sed 's|Processedresponsefromshard||g'|sed 's|8609/solr/mfgsecurity.secure_events:||g' |sort -n |awk -F ":" '{print $1,$2,$3}'
-# 173.36.27.225 numFound 105882
-# 173.36.27.228 numFound 88308
-# 173.36.27.234 numFound 94308
-
-
-# traverse and unzip
-# find ./ -name \*.zip -exec unzip {} \;
-# for file in `find ./ -name *.zip`; do unzip $file; done
-
-
-### key words
-# JOINING: Finish joining ring
-# Bootstrap completed for tokens
-
-
-#mpstat parsing for tpc cores
-#cat mpstats-eat-cassa08.log |awk '$4 > 95 {print $0}'
-
-#cfstats write latencies
-# grep -Hi -B15 "Local write latency:" ./nodetool/cfstats |egrep 'Table:|latency:' | grep -A2 "Table:" |grep -v "\-\-" |awk '{ printf("%-10s ",$0); if(NR%3==0) printf("\n");}'|sed 's/Local\ read\ latency:/read_latency/g' |sed 's/Local\ write\ latency:/write_latency/' | column -t | grep -v "NaN" | sort -r -k4 | sort -k7 -r
-
-#top threads from ttop
-# sperf ttop -c ttop-192.168.1.18.output | egrep -v "Total|RMI" | column -t | awk '$3 > 50 {print $0}'
-
-
-# lcs tables
-# egrep -iRh -B 2 -A 15 "level" ./10.36.81.120/ --include=cfstats | egrep "Table\:|level|read\ count|write\ count" | awk '{ printf("%-10s ",$0); if(NR%4==0) printf("\n");}' | column -t | awk '{print $NF,$0}' | sort -nr | cut -f2- -d' ' > LCS-tables.out
-
-# awk '{ printf("%-10s ",$0); if(NR%3==0) printf("\n");}'
-
-
-#replace in a file. Used for jpmc
-# for f in `find ./ -name java_version`; do sed -i'' -e '1d' $f; done
-
-# turning all files from cassandra.log to system-cassandra.log.0, etc...
-# for f in `find ./ -name cassandra*`; do mv $f "`dirname $f`/debug-`basename $f`"; done
-
-# To check how long  it took to repair each keyspace 
-# egrep -iw "Repair command" debug.log|grep -v "Starting repair command"|awk '{print $1,$2,$4,$7,$8,$9,$10,$12,$13,$14,$15,$16,$17}'
-
-# To check the list of tables that got synced and how many times they are getting in sync
-# egrep -i "fully synced" debug.log|awk '{print $1,$2,$4,$7,$8,$9,$10,$12,$13,$14,$15,$16,$17}'
