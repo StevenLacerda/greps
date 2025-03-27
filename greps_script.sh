@@ -107,11 +107,7 @@ function find_large_partitions() {
 	touch $large_partitions
 	
 	echo_request "READING LARGE PARTITIONS > 1GB" $large_partitions
-<<<<<<< HEAD
 	egrep -iwR "Detected partition.*greater than" --include={system,debug}* | cut -f1 -f7-25 >> $large_partitions
-=======
-	egrep -iwR "Detected partition.*greater than" --include={system,debug}* | cut -f1 -f7-25| awk '{if ($11~/GB$/) print $0}' >> $large_partitions
->>>>>>> 2fa9a8f5e7763a8eb37cc73cb9dc530d3fbf015c
 	
 	echo_request "WRITING LARGE PARTITIONS > 1GB" $large_partitions
 	egrep -iwR "writing large partition" --include={system,debug}* | cut -f1 -f7-25 >> $large_partitions
@@ -637,12 +633,9 @@ while true; do
     	slow_queries
     	timeouts
     	dropped_messages
-<<<<<<< HEAD
     	warn
     	error
     	find_large_partitions
-=======
->>>>>>> 2fa9a8f5e7763a8eb37cc73cb9dc530d3fbf015c
     	break
     	;; 
     -n) 
@@ -688,8 +681,4 @@ sperf core gc >> $gcs
 
 # when done, ring the alert
 echo "DONE"
-<<<<<<< HEAD
 tput bel
-=======
-tput bel
->>>>>>> 2fa9a8f5e7763a8eb37cc73cb9dc530d3fbf015c
