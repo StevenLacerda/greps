@@ -26,6 +26,7 @@ queues="Nibbler/2-queues.out"
 iostat="Nibbler/1-iostat"
 large_partitions="Nibbler/2-large_partitions.out"
 backups="Nibbler/2-backups"
+startupChecks="Nibbler/1-startup-checks.out"
 hash_line="=========================================================================================================="
 
 
@@ -565,6 +566,18 @@ function solr() {
 	sperf search filtercache >> $solr_file
 }
 
+function startupChecks() {
+	echo "Inside startupChecks function"
+	touch $startupChecks
+	echo "Startup checks" > $startupChecks
+
+	echo_request "EPOLL ON STARTUP -- if this is 6.x, you should see EPOLL events on startup if there's a startup captured in the logs" $startupChecks
+	egrep -R "EpollEventLoop.java" ./ --include={system,debug,output}* >> $startupChecks
+
+	echo_request "STARTUP CHECKS" $startupChecks
+	egrep -R "StartupChecks" --include={system,debug,output}* | egrep "WARN" >> $startupChecks	
+}
+
 function tombstones() {
 	echo "Inside tombstones function"
 	echo_request "TOMBSTONE TABLES" $tombstone_file
@@ -604,6 +617,7 @@ while true; do
 		iostat
 		histograms_and_queues
 		tombstones
+		startupChecks
 		find_large_partitions
 		slow_queries
 		timeouts
@@ -631,6 +645,7 @@ while true; do
     	histograms_and_queues
     	config
     	slow_queries
+		startupChecks
     	timeouts
     	dropped_messages
     	warn
