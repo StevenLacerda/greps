@@ -31,6 +31,8 @@ hash_line="=====================================================================
 
 
 function backups() {
+	echo "Inside backups function"
+
 	touch $backups
 
 	# 1)To check all type of backups that ran(onserver or local or s3)
@@ -63,17 +65,18 @@ function backups() {
 
 function config() { 
 	echo "Inside config function"
+
 	touch $config_file
 	echo_request "YAML VALUES" $config_file
 
-	for f in `find . -type file -name cassandra.yaml`;
+	for f in `find . -type f -name cassandra.yaml`;
 	do
 		echo $f | grep -o '[0-9].*[0-9]' >> $config_file
 		egrep -ih "^memtable_|^#.*memtable_.*:|^concurrent_|^commitlog_segment|^commitlog_total|^#.*commitlog_total.*:|^compaction_|^incremental_backups|^tpc_cores|^disk_access_mode|^file_cache_size_in_mb|^#.*file_cache_size_in_mb.*:" $f >> $config_file
 		echo >> $config_file
 	done
 
-	for f in `find . -type file -name jvm*`;
+	for f in `find . -type f -name jvm*`;
 	do
 		echo $f | grep -o '[0-9].*[0-9]' >> $config_file_jvm
 		grep -h "^[^#;]" $f | sed s/-XX://g >> $config_file_jvm
@@ -83,7 +86,8 @@ function config() {
 # end config file section
 
 function diag-import() {
-	echo "Inside config function"
+	echo "Inside diag-import function"
+
 	filename=$1
 	python3 ~/Downloads/1-scripts/diag-import-main/import $filename
 	python3 ~/Downloads/1-scripts/diag-viewer-main/app.py "$filename/diagnostics.db"
@@ -104,14 +108,15 @@ function echo_request() {
 }
 
 function find_large_partitions() {
-	echo "Inside large_partitions function"
-	touch $large_partitions
-	
-	echo_request "READING LARGE PARTITIONS > 1GB" $large_partitions
-	egrep -iwR "Detected partition.*greater than" --include={system,debug}* | cut -f1 -f7-25 >> $large_partitions
-	
-	echo_request "WRITING LARGE PARTITIONS > 1GB" $large_partitions
-	egrep -iwR "writing large partition" --include={system,debug}* | cut -f1 -f7-25 >> $large_partitions
+    echo "Inside find_large_partitions function"
+    
+    touch $large_partitions
+    
+    echo_request "READING LARGE PARTITIONS > 1GB" $large_partitions
+    egrep -iwR "Detected partition.*greater than" --include={system,debug}* | cut -f1,7-25 >> $large_partitions
+    
+    echo_request "WRITING LARGE PARTITIONS > 1GB" $large_partitions
+    egrep -iwR "writing large partition" --include={system,debug}* | cut -f1,7-25 >> $large_partitions
 }
 
 function greps() {
@@ -145,12 +150,11 @@ function greps() {
 	# Calculate the percentage for each thread and save to the file
 	echo "$counts" | awk -v total="$total" '{printf "%s %s %.2f%%\n", $1, $2, ($1 / total) * 100}' | column -t >> "$grep_file"
 
+    echo_request "LARGEST 10 FLUSHES ON HEAP" 
+    egrep -iR 'enqueuing flush of' ./ --include=debug* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -r -h | head -n 20 >> $grep_file
 
-	echo_request "LARGEST 10 FLUSHES ON HEAP" 
-	egrep -iR 'enqueuing flush of' ./ --include=debug* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -h | tail -r -20 >> $grep_file
-
-	echo_request "LARGEST 10 FLUSHES OFF HEAP"
-    egrep -iR 'enqueuing flush of' ./ --include=debug* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -k 4 -h | tail -r -20 | awk -F', ' '{printf ("%s, %s\n",$2,$1) }' >> $grep_file
+    echo_request "LARGEST 10 FLUSHES OFF HEAP"
+    egrep -iR 'enqueuing flush of' ./ --include=debug* | awk -F'Enqueuing' '{print $2}' | awk -F':' '{print $2}' | column -t | sort -k 4 -r -h | head -n 20 | awk -F', ' '{printf ("%s, %s\n",$2,$1) }' >> $grep_file
 
 	echo_request "FLUSHING LARGEST"
 	echo "Any flushes larger than .9x" >> $grep_file
@@ -251,6 +255,8 @@ function greps() {
 }
 
 function error() {
+	echo "Inside error function"
+
 	echo_request "ERROR TYPES - COUNT" $error
 	egrep -R "ERROR" ./ --include={system,debug}* | awk -F']' '{print $2}' | awk '{print $3}' | sort | uniq -c >> $error
 
@@ -262,6 +268,8 @@ function error() {
 }
 
 function warn() {
+	echo "Inside warn function"
+
 	echo_request "WARN TYPES - COUNT" $warn
 	egrep -R "WARN" ./ --include={system,debug}* | grep -v "SyncUtil.java" | awk -F']' '{print $2}' | awk '{print $3}' | sort | uniq -c >> $warn
 
@@ -344,6 +352,7 @@ function histograms_and_queues() {
 }
 
 function iostat() {
+	echo "Inside iostat function"
 	i=0
 	for f in `find ./ -name iostat`;
 		do 
@@ -362,6 +371,7 @@ function iostat() {
 function nibbler() {
 	# get version info
 	echo "Inside nibbler function"
+
 	version=$(egrep -i ".*" $(find . -name version | head -1))
 	major_version=$(echo $version | awk -F'.' '{print $NF}' | cut -c1-1)
 	node_status="Nibbler/Node_Status.out"
@@ -382,6 +392,7 @@ function nibbler() {
 
 function timeouts() {
 	echo "Inside timeouts function"
+
 	touch $timeouts
 	echo "Operation timed out" > $timeouts
 
@@ -392,6 +403,7 @@ function timeouts() {
 
 function sixO() {
 	echo "Inside sixO function"
+
 	touch $sixo
 	echo "6.x Specific greps" > $sixo
 	
@@ -422,8 +434,9 @@ function sixO() {
 }
 
 function slow_queries() {
-	touch $slow_queries
 	echo "Inside slow_queries function"
+
+	touch $slow_queries
 
 	# Capture the grep results in a variable
 	slowqueryresults=$(egrep -R 'SELECT.*slow' ./ --include=debug*)
@@ -462,6 +475,7 @@ function slow_queries() {
 
 function solr() {
 	echo "Inside solr function"
+
 	is_solr_enabled=`egrep "Search" ./Nibbler/Node_Status.out`
 	if [ -z "$is_solr_enabled" ]
 	then 
@@ -568,6 +582,7 @@ function solr() {
 
 function startupChecks() {
 	echo "Inside startupChecks function"
+
 	touch $startupChecks
 	echo "Startup checks" > $startupChecks
 
@@ -580,6 +595,7 @@ function startupChecks() {
 
 function tombstones() {
 	echo "Inside tombstones function"
+
 	echo_request "TOMBSTONE TABLES" $tombstone_file
 	egrep -iRh 'tombstone.*rows' ./ --include={system,debug}* | awk -F'FROM' '{print $2}' | awk -F'WHERE' '{print $1}' | sort | uniq -c | sort -nr >> $tombstone_file
 
