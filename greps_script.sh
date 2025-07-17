@@ -218,8 +218,8 @@ function greps() {
 	egrep -Ric 'Compacted (.*).*]' ./ --include=debug* | egrep ":[1-9]" | awk -F: '{print $1,$2}' | sort -k2 -r -h | awk -F'[ /]' '{print $4, $NF}' | column -t >> $grep_file
 
 	echo_request "MERGED COMPACTIONS" 
-	egrep -R 'Compacted (.*).*]' ./ --include=debug* | awk '$0 ~ /[2-9][0-9]\ sstables/{print $0}' >> $grep_file
-
+	egrep -R 'Compacted (.*).*]' ./ --include=debug* | awk '$0 ~ /[2-9][0-9] sstables/{print $0}' >> $grep_file
+	
 	driver_file=$(find . -name driver | tail -1) 
 	if [ ! -z $driver_file ]
 	then
